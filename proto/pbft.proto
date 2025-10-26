@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+package pb;
+option go_package = "pbft-bank-application/proto;pb";
+
+message Transaction {
+  string from_client_id = 1;
+  string to_client_id = 2;
+  int32 amount = 3;
+  int32 time = 4;
+}
+
+message PrePrepareMessageRequest {
+  int32  view_number = 1;
+  int32  sequence_number = 2;
+  string digest = 3;
+  int32  replica_id = 4;
+  Transaction  transaction = 5;
+  bytes  signature = 6;
+}
+
+// can think of better response
+message PrePrepareMessageResponse {
+  int32  view_number = 1;
+  int32  sequence_number = 2;
+  string digest = 3;
+  int32  replica_id = 4;
+  bytes  signature = 5;
+  // shld always be PRE-PREPARED
+  string status = 6;
+}
+
+message PrepareMessageRequest {
+  repeated PrePrepareMessageResponse pre_prepared_message_response = 1;
+  // are below fields needed?
+  int32  replica_id = 2;
+  bytes  signature = 3;
+  int32 sequence_number = 4;
+}
+
+// can think of better response
+message PrepareMessageResponse {
+  int32  view_number = 1;
+  int32  sequence_number = 2;
+  string digest = 3;
+  int32  replica_id = 4;
+  bytes  signature = 5;
+  // shld always be PREPARED
+  string status = 6;
+}
+
+message CommitMessageRequest {
+  repeated PrepareMessageResponse prepared_message_response = 1;
+  // are below fields needed?
+  int32  replica_id = 2;
+  bytes  signature = 3;
+  int32 sequence_number = 4;
+}
+
+message CommitMessageResponse {
+  int32  view_number = 1;
+  int32  sequence_number = 2;
+  string digest = 3;
+  int32  replica_id = 4;
+  bytes  signature = 5;
+  // shld be COMMITTED/EXECUTED
+  string status = 6;
+}
+
+message ClientRequestMessage {
+  string  client_id = 1;
+  Transaction transaction = 2;
+  bytes  client_sig = 3;
+  repeated string live_nodes = 4;
+  repeated string byzantine_nodes = 5;
+}
+
+message ReplyToClientRequest {
+  int32  view = 1;
+  int32  time = 2;
+  bool result = 3;
+  int32  replica_id = 4;
+  bytes  signature = 5;
+}
+
+message Ack {
+  bool success = 1;
+  string message = 2;
+}
+
+message ReadClientBalanceRequest {
+  string client_id = 1;
+  bytes signature = 2;
+}
+
+message ReadClientBalanceResponse {
+  int32 balance = 1;
+  bytes  signature = 2;
+}
+
+message PrintDBResponse {
+  int32 replica_id = 1;
+  map<string, int32> balances = 2;
+  int32 view_number = 3;
+  int32 last_executed_seq = 4;
+}
+
+message FlushAndUpdateStatusRequest {
+   repeated int32 live_nodes = 1;
+   repeated int32 byzantine_nodes = 2;
+}
+
+service PBFTReplica {
+  rpc SendRequestToLeader     (ClientRequestMessage)     returns (ReplyToClientRequest);
+  rpc SendPrePrepare  (PrePrepareMessageRequest)  returns (PrePrepareMessageResponse);
+  rpc SendPrepare     (PrepareMessageRequest)     returns (PrepareMessageResponse);
+  rpc SendCommit      (CommitMessageRequest)      returns (CommitMessageResponse);
+  rpc FlushPreviousDataAndUpdatePeersStatus   (FlushAndUpdateStatusRequest) returns (google.protobuf.Empty);
+  rpc ReadClientBalance (ReadClientBalanceRequest) returns (ReadClientBalanceResponse);
+
+  // Client funcns
+  rpc PrintDB                 (google.protobuf.Empty)     returns (PrintDBResponse);
+}
+
+service ClientCallback {
+  rpc ReplyToClientFromNode (ReplyToClientRequest) returns (Ack);
+}

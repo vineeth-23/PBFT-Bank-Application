@@ -1,0 +1,81 @@
+{
+  "replicas": [
+    {
+      "id": 1,
+      "addr": "localhost:50051",
+      "pubkey_hex": "e93bbd37c9b9b43dd6edd3cc41f09ce929f069cb7f9753542de888b1e3be1505"
+    },
+    {
+      "id": 2,
+      "addr": "localhost:50052",
+      "pubkey_hex": "06fff4f6d213bff363f22c94b731814425f9003845766e56e61c48c1af2d1745"
+    },
+    {
+      "id": 3,
+      "addr": "localhost:50053",
+      "pubkey_hex": "975b575776887f2ea1263e5e86c23123063b73b36e0cf732e0ed0ae57023c8d5"
+    },
+    {
+      "id": 4,
+      "addr": "localhost:50054",
+      "pubkey_hex": "27f17187d50c09d13bf26cc241bf8c115be37141651bad86c800a569f35a1b42"
+    },
+    {
+      "id": 5,
+      "addr": "localhost:50055",
+      "pubkey_hex": "71d4417ee9ec5a3de53a561006101168b005122c3a0bbcdf92bf832b08cbf7b4"
+    },
+    {
+      "id": 6,
+      "addr": "localhost:50056",
+      "pubkey_hex": "6f844b3f7c1652d993c08bbaafa06d0b2dc58abd0a8bdf3d9536b4273e7198db"
+    },
+    {
+      "id": 7,
+      "addr": "localhost:50057",
+      "pubkey_hex": "5851b3a17830fcda1e596d545039c783f7b01346623e8198ffe7b1de7ea13ee2"
+    }
+  ],
+  "clients": [
+    {
+      "name": "A",
+      "pubkey_hex": "3dff264fae5709d4f9bba0a4023ff5bdd594ad4ee136eb3f95ec405be25e4cfa"
+    },
+    {
+      "name": "B",
+      "pubkey_hex": "c0b96bf134674eb8c49931fd9be868a56a9533e13e3d0987ec3446440e3709c8"
+    },
+    {
+      "name": "C",
+      "pubkey_hex": "b7a34a167959b30a28cb17cd5ba50b0592e5361a305db671e4a4d8a9bba3ebbf"
+    },
+    {
+      "name": "D",
+      "pubkey_hex": "cd407c2ebef0e7cb473740559d6f3606950db65bf6b246e0303d32dc41c4a164"
+    },
+    {
+      "name": "E",
+      "pubkey_hex": "1cbfab75659c6e06364c4f9007eb894a2a7adf487195ee1230a44ce369326b72"
+    },
+    {
+      "name": "F",
+      "pubkey_hex": "dd6cb61c3462bca97293c5b6b940021fe21f16e2d863373ff04731149d3c8486"
+    },
+    {
+      "name": "G",
+      "pubkey_hex": "1029fb20877dc47649eefc89b6f25f28c9f9f28506839b524e0e9cc2f3e89316"
+    },
+    {
+      "name": "H",
+      "pubkey_hex": "9a21497a7749467c541fd9121e3ebb99f6b69dcee09c24ef02953524a01ff7b3"
+    },
+    {
+      "name": "I",
+      "pubkey_hex": "b42c62a15856ece0e046e730784a49ad37a297bcd6a938df0523eedb5e6a9717"
+    },
+    {
+      "name": "J",
+      "pubkey_hex": "31eca433c3953097469c99902012a7fbf4a21c9a170f5baa4528e0cd222f661f"
+    }
+  ]
+}
