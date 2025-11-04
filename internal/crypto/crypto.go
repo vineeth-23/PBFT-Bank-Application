@@ -48,6 +48,14 @@ func GenerateBytesForSigningReadResponse(replicaID int32) []byte {
 	return []byte(fmt.Sprintf("READ-RESP|r%d", replicaID))
 }
 
+func GenerateBytesForViewChangeMessage(replicaID int32) []byte {
+	return []byte(fmt.Sprintf("VC|%d", replicaID))
+}
+
+func GenerateBytesOnlyForNodeID(replicaID int32) []byte {
+	return []byte(fmt.Sprintf("NID|%d", replicaID))
+}
+
 func VerifyClientSignatureForReadRequest(clientID string, sig []byte, PubKeysOfClients map[string]ed25519.PublicKey) bool {
 	pub, ok := PubKeysOfClients[clientID]
 	if !ok {
@@ -70,4 +78,33 @@ func VerifyReadRespSigByClient(replicaID int32, sig []byte, replicaPubs map[int3
 		return false
 	}
 	return ed25519.Verify(pub, GenerateBytesForSigningReadResponse(replicaID), sig)
+}
+
+func SignInvalidTamper(priv ed25519.PrivateKey, data []byte) []byte {
+	sig := ed25519.Sign(priv, data)
+	out := append([]byte(nil), sig...)
+
+	if len(out) >= 3 {
+		out[0] ^= 0xA5
+		out[2] ^= 0x5A
+	} else if len(out) > 0 {
+		out[0] ^= 0xFF
+	}
+	return out
+}
+
+func VerifyNodeSignatureBasedOnSequenceNumberAndDigest(ID int32, sequenceNumber int32, digest string, signature []byte, PubKeysOfNodes map[int32]ed25519.PublicKey) bool {
+	prepBytes := []byte(fmt.Sprintf("%d:%s", sequenceNumber, digest))
+	if ok := VerifyReplicaSig(ID, prepBytes, signature, PubKeysOfNodes); !ok {
+		return false
+	}
+	return true
+}
+
+func VerifyReplicaSig(id int32, data, sig []byte, PubKeysOfNodes map[int32]ed25519.PublicKey) bool {
+	pub, ok := PubKeysOfNodes[id]
+	if !ok {
+		return false
+	}
+	return Verify(pub, data, sig)
 }

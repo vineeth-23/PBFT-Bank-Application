@@ -18,26 +18,26 @@ const (
 const quorum = F + 1
 
 // fixed per-request wait before broadcasting to all replicas
-const clientTimeout = 1500 * time.Millisecond
+const clientTimeout = 20000 * time.Millisecond
 
 // We key replies by global transaction time (unique across CSV)
 type ReplyKey = int32 // tx.Time
 
 type bucket struct {
-	replies  map[int32]*pb.ReplyToClientRequest // replica_id -> reply (dedupe)
-	tally    map[bool]int                       // result -> count
+	replies  map[int32]*pb.ReplyToClientRequest
+	tally    map[bool]int
 	accepted *pb.ReplyToClientRequest
 	waitCh   chan struct{}
 }
 
 type Hub struct {
 	// cluster
-	ReplicaAddrs map[int32]string            // id -> addr
-	ReplicaPubs  map[int32]ed25519.PublicKey // id -> pub ed25519
+	ReplicaAddrs map[int32]string
+	ReplicaPubs  map[int32]ed25519.PublicKey
 
 	// clients (A..J)
-	ClientPriv map[string]ed25519.PrivateKey // "A".."J" -> priv
-	ClientPub  map[string]ed25519.PublicKey  // "A".."J" -> pub
+	ClientPriv map[string]ed25519.PrivateKey
+	ClientPub  map[string]ed25519.PublicKey
 
 	// aggregation / view tracking
 	Mu         sync.Mutex
@@ -46,6 +46,8 @@ type Hub struct {
 
 	AliveNodes     []int32
 	ByzantineNodes []int32
+
+	Attacks []*Attack
 }
 
 func NewHub() *Hub {
@@ -66,4 +68,5 @@ func (h *Hub) ResetForNewSet() {
 	h.AliveNodes = nil
 	h.ByzantineNodes = nil
 	h.LatestView = 0
+	h.Attacks = nil
 }

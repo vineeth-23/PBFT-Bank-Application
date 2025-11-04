@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	maxRetryCount = 3                      // total retry rounds after the first attempt
-	retryBackoff  = 500 * time.Millisecond // sleep between rounds; tune as needed
+	maxRetryCount = 5
+	retryBackoff  = 6000 * time.Millisecond
 )
 
 func (h *Hub) verifyReplySig(r *pb.ReplyToClientRequest) bool {
@@ -28,8 +28,6 @@ func (h *Hub) verifyReplySig(r *pb.ReplyToClientRequest) bool {
 	return ed25519.Verify(pub, crypto.GenerateBytesForReplySigning(r), r.Signature)
 }
 
-// ===== aggregation =====
-
 func (h *Hub) ProcessNodeReply(r *pb.ReplyToClientRequest) {
 	log.Printf("[Hub] Processing reply from replica=%d | view=%d | time=%d | result=%t",
 		r.ReplicaId, r.View, r.Time, r.Result)
@@ -39,7 +37,6 @@ func (h *Hub) ProcessNodeReply(r *pb.ReplyToClientRequest) {
 		h.LatestView = r.GetView()
 	}
 
-	// Verify signature before accepting
 	if !h.verifyReplySig(r) {
 		log.Printf("[Hub] ❌ Dropped invalid signature from replica=%d | time=%d | view=%d",
 			r.ReplicaId, r.Time, r.View)
@@ -72,16 +69,21 @@ func (h *Hub) ProcessNodeReply(r *pb.ReplyToClientRequest) {
 	log.Printf("[Hub] 🧮 Tally update: result=%t → count=%d (replica=%d, time=%d)",
 		r.Result, b.tally[r.Result], r.ReplicaId, r.Time)
 
-	// Check if quorum reached
 	if b.accepted == nil && b.tally[r.Result] >= quorum {
 		b.accepted = r
-		close(b.waitCh)
-		log.Printf("[Hub] ✅ Quorum reached for time=%d | result=%t | view=%d | decided by replica=%d",
-			r.Time, r.Result, r.View, r.ReplicaId)
+		select {
+		case <-b.waitCh:
+			log.Printf("It is in b.waitCh")
+		default:
+			close(b.waitCh)
+			log.Printf("[Hub] ✅ Quorum reached for time=%d | result=%t | view=%d | decided by replica=%d",
+				r.Time, r.Result, r.View, r.ReplicaId)
+		}
 	}
 }
 
-func (h *Hub) waitQuorumOrTimeout(key ReplyKey, d time.Duration) (*pb.ReplyToClientRequest, bool) {
+func (h *Hub) waitQuorumOrTimeout(key ReplyKey) (*pb.ReplyToClientRequest, bool) {
+	d := 500 * time.Millisecond
 	h.Mu.Lock()
 	b := h.buckets[key]
 	if b == nil {
@@ -97,21 +99,46 @@ func (h *Hub) waitQuorumOrTimeout(key ReplyKey, d time.Duration) (*pb.ReplyToCli
 		h.Mu.Unlock()
 		return r, true
 	}
+	if h.buckets[key] != nil {
+		repliesReceived := h.buckets[key].replies
+		if len(repliesReceived) > 0 {
+			for _, reply := range repliesReceived {
+				h.Mu.Unlock()
+				return reply, true
+			}
+		}
+	}
 	ch := b.waitCh
 	h.Mu.Unlock()
 
 	timer := time.NewTimer(d)
 	defer timer.Stop()
 
-	select {
-	case <-ch:
-		h.Mu.Lock()
-		r := h.buckets[key].accepted
-		h.Mu.Unlock()
-		return r, true
-	case <-timer.C:
-		return nil, false
+	for {
+		select {
+		case <-ch:
+			h.Mu.Lock()
+			r := h.buckets[key].accepted
+			h.Mu.Unlock()
+			return r, true
+		case <-time.After(400 * time.Millisecond):
+			h.Mu.Lock()
+			if h.buckets[key] != nil {
+				repliesReceived := h.buckets[key].replies
+				if len(repliesReceived) > 0 {
+					for _, reply := range repliesReceived {
+						log.Printf("Recievied reply for trnscn time: %d and closing", reply.Time)
+						h.Mu.Unlock()
+						return reply, true
+					}
+				}
+			}
+			h.Mu.Unlock()
+		case <-timer.C:
+			return nil, false
+		}
 	}
+	//return nil, false
 }
 
 func (h *Hub) signTx(clientID string, tx *pb.Transaction) ([]byte, bool) {
@@ -183,11 +210,11 @@ func (h *Hub) ExecuteReadTransaction(ctx context.Context, clientID string) (int3
 			count := len(tally[it.bal])
 			log.Printf("[READ][%s] tally balance=%d -> %d/%d", clientID, it.bal, count, quorum)
 			if count >= quorum {
-				log.Printf("[READ][%s] ✅ quorum reached: balance=%d", clientID, it.bal)
+				log.Printf("[READ][%s] Recievied response from %d nodes => quorum reached: balance=%d", clientID, count, it.bal)
 				return it.bal, true
 			}
 		case <-timeout.C:
-			log.Printf("[READ][%s] ⏱️ timeout waiting for quorum", clientID)
+			log.Printf("[READ][%s]  timeout waiting for quorum", clientID)
 			return 0, false
 		}
 	}
@@ -211,29 +238,48 @@ func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Tr
 	}
 	key := ReplyKey(tx.Time)
 
-	if r, ok := h.waitQuorumOrTimeout(key, 1*time.Millisecond); ok {
+	if r, ok := h.waitQuorumOrTimeout(key); ok {
+		log.Printf("✅ Transaction %d quorum satisfied before sending request", tx.Time)
 		return r, true
 	}
 
 	round := 0
 	for {
+		if h.buckets[key] != nil {
+			repliesRecievied := h.buckets[key].replies
+			if len(repliesRecievied) > 0 {
+				log.Printf("Transaction %d already has cached reply — returning cached response", tx.Time)
+				return repliesRecievied[0], true
+			}
+		}
+
 		h.Mu.Lock()
 		leader := leaderForView(h.LatestView)
 		h.Mu.Unlock()
 
-		if cli, conn, err := h.dialReplica(leader); err == nil {
+		log.Printf("[Round %d] Sending transaction %d to leader node %d", round, tx.Time, leader)
+		if node, conn, err := h.dialReplica(leader); err == nil {
 			rpcCtx, cancel := context.WithTimeout(ctx, clientTimeout)
-			_, _ = cli.SendRequestToLeader(rpcCtx, req)
+			_, _ = node.SendRequestToLeader(rpcCtx, req)
 			cancel()
 			conn.Close()
+			if err != nil {
+				log.Printf("❌ Failed to send transaction %d to leader node %d: %v", tx.Time, leader, err)
+			} else {
+				log.Printf("📤 Successfully sent transaction %d to leader node %d", tx.Time, leader)
+			}
 		}
 
-		if r, ok := h.waitQuorumOrTimeout(key, retryBackoff); ok {
+		if r, ok := h.waitQuorumOrTimeout(key); ok {
+			log.Printf("✅ Transaction %d quorum reached after sending to leader", tx.Time)
 			return r, true
 		}
 
+		time.Sleep(3 * time.Second)
+
 		all := h.dialAll()
 		var wg sync.WaitGroup
+		log.Printf("🔁 [Round %d] Broadcasting transaction %d to all replicas (%d total)", round, tx.Time, len(all))
 		for _, cli := range all {
 			wg.Add(1)
 			go func(c pb.PBFTReplicaClient) {
@@ -245,19 +291,19 @@ func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Tr
 		}
 		wg.Wait()
 
-		if r, ok := h.waitQuorumOrTimeout(key, clientTimeout); ok {
+		if r, ok := h.waitQuorumOrTimeout(key); ok {
 			return r, true
 		}
 
 		if round >= maxRetryCount {
+			log.Printf("❌ Transaction %d failed after %d retries — giving up", tx.Time, round)
 			return nil, false
 		}
 		round++
+		log.Printf("🔁 Retrying transaction %d — next round=%d (backoff=%v)", tx.Time, round, retryBackoff)
 		time.Sleep(retryBackoff)
 	}
 }
-
-// ===== dialing =====
 
 func (h *Hub) dialReplica(id int32) (pb.PBFTReplicaClient, *grpc.ClientConn, error) {
 	addr, ok := h.ReplicaAddrs[id]

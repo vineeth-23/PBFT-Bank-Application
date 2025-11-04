@@ -945,17 +945,70 @@ func (x *PrintDBResponse) GetLastExecutedSeq() int32 {
 	return 0
 }
 
+type Attack struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Nodes         []int32                `protobuf:"varint,2,rep,packed,name=nodes,proto3" json:"nodes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Attack) Reset() {
+	*x = Attack{}
+	mi := &file_proto_pbft_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Attack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Attack) ProtoMessage() {}
+
+func (x *Attack) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Attack.ProtoReflect.Descriptor instead.
+func (*Attack) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *Attack) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Attack) GetNodes() []int32 {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
 type FlushAndUpdateStatusRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	LiveNodes      []int32                `protobuf:"varint,1,rep,packed,name=live_nodes,json=liveNodes,proto3" json:"live_nodes,omitempty"`
 	ByzantineNodes []int32                `protobuf:"varint,2,rep,packed,name=byzantine_nodes,json=byzantineNodes,proto3" json:"byzantine_nodes,omitempty"`
+	Attacks        []*Attack              `protobuf:"bytes,3,rep,name=attacks,proto3" json:"attacks,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *FlushAndUpdateStatusRequest) Reset() {
 	*x = FlushAndUpdateStatusRequest{}
-	mi := &file_proto_pbft_proto_msgTypes[13]
+	mi := &file_proto_pbft_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -967,7 +1020,7 @@ func (x *FlushAndUpdateStatusRequest) String() string {
 func (*FlushAndUpdateStatusRequest) ProtoMessage() {}
 
 func (x *FlushAndUpdateStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_pbft_proto_msgTypes[13]
+	mi := &file_proto_pbft_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -980,7 +1033,7 @@ func (x *FlushAndUpdateStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlushAndUpdateStatusRequest.ProtoReflect.Descriptor instead.
 func (*FlushAndUpdateStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_pbft_proto_rawDescGZIP(), []int{13}
+	return file_proto_pbft_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *FlushAndUpdateStatusRequest) GetLiveNodes() []int32 {
@@ -993,6 +1046,698 @@ func (x *FlushAndUpdateStatusRequest) GetLiveNodes() []int32 {
 func (x *FlushAndUpdateStatusRequest) GetByzantineNodes() []int32 {
 	if x != nil {
 		return x.ByzantineNodes
+	}
+	return nil
+}
+
+func (x *FlushAndUpdateStatusRequest) GetAttacks() []*Attack {
+	if x != nil {
+		return x.Attacks
+	}
+	return nil
+}
+
+// --------VIEW CHANGE / NEW VIEW----------------
+type ViewChangeMessage struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	NewViewNumber    int32                  `protobuf:"varint,1,opt,name=new_view_number,json=newViewNumber,proto3" json:"new_view_number,omitempty"`
+	NodeId           int32                  `protobuf:"varint,2,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	PreparedProofSet []*PreparedProofSet    `protobuf:"bytes,3,rep,name=prepared_proof_set,json=preparedProofSet,proto3" json:"prepared_proof_set,omitempty"`
+	Signature        []byte                 `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ViewChangeMessage) Reset() {
+	*x = ViewChangeMessage{}
+	mi := &file_proto_pbft_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ViewChangeMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ViewChangeMessage) ProtoMessage() {}
+
+func (x *ViewChangeMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ViewChangeMessage.ProtoReflect.Descriptor instead.
+func (*ViewChangeMessage) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ViewChangeMessage) GetNewViewNumber() int32 {
+	if x != nil {
+		return x.NewViewNumber
+	}
+	return 0
+}
+
+func (x *ViewChangeMessage) GetNodeId() int32 {
+	if x != nil {
+		return x.NodeId
+	}
+	return 0
+}
+
+func (x *ViewChangeMessage) GetPreparedProofSet() []*PreparedProofSet {
+	if x != nil {
+		return x.PreparedProofSet
+	}
+	return nil
+}
+
+func (x *ViewChangeMessage) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+type PreparedProofSet struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	SequenceNumber int32                  `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber,proto3" json:"sequence_number,omitempty"`
+	ViewNumber     int32                  `protobuf:"varint,2,opt,name=view_number,json=viewNumber,proto3" json:"view_number,omitempty"`
+	Digest         string                 `protobuf:"bytes,3,opt,name=digest,proto3" json:"digest,omitempty"`
+	Proofs         []*StatusProof         `protobuf:"bytes,4,rep,name=proofs,proto3" json:"proofs,omitempty"`
+	Status         string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"` // current status of the transaction in this node while sending view change message
+	Transaction    *Transaction           `protobuf:"bytes,6,opt,name=transaction,proto3" json:"transaction,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PreparedProofSet) Reset() {
+	*x = PreparedProofSet{}
+	mi := &file_proto_pbft_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreparedProofSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreparedProofSet) ProtoMessage() {}
+
+func (x *PreparedProofSet) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreparedProofSet.ProtoReflect.Descriptor instead.
+func (*PreparedProofSet) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PreparedProofSet) GetSequenceNumber() int32 {
+	if x != nil {
+		return x.SequenceNumber
+	}
+	return 0
+}
+
+func (x *PreparedProofSet) GetViewNumber() int32 {
+	if x != nil {
+		return x.ViewNumber
+	}
+	return 0
+}
+
+func (x *PreparedProofSet) GetDigest() string {
+	if x != nil {
+		return x.Digest
+	}
+	return ""
+}
+
+func (x *PreparedProofSet) GetProofs() []*StatusProof {
+	if x != nil {
+		return x.Proofs
+	}
+	return nil
+}
+
+func (x *PreparedProofSet) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *PreparedProofSet) GetTransaction() *Transaction {
+	if x != nil {
+		return x.Transaction
+	}
+	return nil
+}
+
+type StatusProof struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	NodeId         int32                  `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	View           int32                  `protobuf:"varint,2,opt,name=view,proto3" json:"view,omitempty"`
+	SequenceNumber int32                  `protobuf:"varint,3,opt,name=sequence_number,json=sequenceNumber,proto3" json:"sequence_number,omitempty"`
+	Digest         string                 `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
+	Status         string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	Signature      []byte                 `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *StatusProof) Reset() {
+	*x = StatusProof{}
+	mi := &file_proto_pbft_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StatusProof) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StatusProof) ProtoMessage() {}
+
+func (x *StatusProof) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StatusProof.ProtoReflect.Descriptor instead.
+func (*StatusProof) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *StatusProof) GetNodeId() int32 {
+	if x != nil {
+		return x.NodeId
+	}
+	return 0
+}
+
+func (x *StatusProof) GetView() int32 {
+	if x != nil {
+		return x.View
+	}
+	return 0
+}
+
+func (x *StatusProof) GetSequenceNumber() int32 {
+	if x != nil {
+		return x.SequenceNumber
+	}
+	return 0
+}
+
+func (x *StatusProof) GetDigest() string {
+	if x != nil {
+		return x.Digest
+	}
+	return ""
+}
+
+func (x *StatusProof) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *StatusProof) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+type NewViewMessage struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	NewViewNumber int32                       `protobuf:"varint,1,opt,name=new_view_number,json=newViewNumber,proto3" json:"new_view_number,omitempty"`
+	SourceId      int32                       `protobuf:"varint,2,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	PrePrepares   []*PrePrepareMessageRequest `protobuf:"bytes,3,rep,name=pre_prepares,json=prePrepares,proto3" json:"pre_prepares,omitempty"`
+	ViewChanges   []*ViewChangeMessage        `protobuf:"bytes,4,rep,name=view_changes,json=viewChanges,proto3" json:"view_changes,omitempty"`
+	Signature     []byte                      `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewViewMessage) Reset() {
+	*x = NewViewMessage{}
+	mi := &file_proto_pbft_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewViewMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewViewMessage) ProtoMessage() {}
+
+func (x *NewViewMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewViewMessage.ProtoReflect.Descriptor instead.
+func (*NewViewMessage) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *NewViewMessage) GetNewViewNumber() int32 {
+	if x != nil {
+		return x.NewViewNumber
+	}
+	return 0
+}
+
+func (x *NewViewMessage) GetSourceId() int32 {
+	if x != nil {
+		return x.SourceId
+	}
+	return 0
+}
+
+func (x *NewViewMessage) GetPrePrepares() []*PrePrepareMessageRequest {
+	if x != nil {
+		return x.PrePrepares
+	}
+	return nil
+}
+
+func (x *NewViewMessage) GetViewChanges() []*ViewChangeMessage {
+	if x != nil {
+		return x.ViewChanges
+	}
+	return nil
+}
+
+func (x *NewViewMessage) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+type PrintStatusRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	SequenceNumber int32                  `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber,proto3" json:"sequence_number,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PrintStatusRequest) Reset() {
+	*x = PrintStatusRequest{}
+	mi := &file_proto_pbft_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrintStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrintStatusRequest) ProtoMessage() {}
+
+func (x *PrintStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrintStatusRequest.ProtoReflect.Descriptor instead.
+func (*PrintStatusRequest) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *PrintStatusRequest) GetSequenceNumber() int32 {
+	if x != nil {
+		return x.SequenceNumber
+	}
+	return 0
+}
+
+type PrintStatusResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	NodeId         int32                  `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	SequenceNumber int32                  `protobuf:"varint,2,opt,name=sequence_number,json=sequenceNumber,proto3" json:"sequence_number,omitempty"`
+	Status         string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	Transaction    *Transaction           `protobuf:"bytes,4,opt,name=transaction,proto3" json:"transaction,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PrintStatusResponse) Reset() {
+	*x = PrintStatusResponse{}
+	mi := &file_proto_pbft_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrintStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrintStatusResponse) ProtoMessage() {}
+
+func (x *PrintStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrintStatusResponse.ProtoReflect.Descriptor instead.
+func (*PrintStatusResponse) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *PrintStatusResponse) GetNodeId() int32 {
+	if x != nil {
+		return x.NodeId
+	}
+	return 0
+}
+
+func (x *PrintStatusResponse) GetSequenceNumber() int32 {
+	if x != nil {
+		return x.SequenceNumber
+	}
+	return 0
+}
+
+func (x *PrintStatusResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *PrintStatusResponse) GetTransaction() *Transaction {
+	if x != nil {
+		return x.Transaction
+	}
+	return nil
+}
+
+type PrintViewRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeId        int32                  `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrintViewRequest) Reset() {
+	*x = PrintViewRequest{}
+	mi := &file_proto_pbft_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrintViewRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrintViewRequest) ProtoMessage() {}
+
+func (x *PrintViewRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrintViewRequest.ProtoReflect.Descriptor instead.
+func (*PrintViewRequest) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *PrintViewRequest) GetNodeId() int32 {
+	if x != nil {
+		return x.NodeId
+	}
+	return 0
+}
+
+type PrintViewResponse struct {
+	state                            protoimpl.MessageState    `protogen:"open.v1"`
+	NewViewNumberToNewViewMessageMap map[int32]*NewViewMessage `protobuf:"bytes,1,rep,name=newViewNumberToNewViewMessageMap,proto3" json:"newViewNumberToNewViewMessageMap,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
+}
+
+func (x *PrintViewResponse) Reset() {
+	*x = PrintViewResponse{}
+	mi := &file_proto_pbft_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrintViewResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrintViewResponse) ProtoMessage() {}
+
+func (x *PrintViewResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrintViewResponse.ProtoReflect.Descriptor instead.
+func (*PrintViewResponse) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *PrintViewResponse) GetNewViewNumberToNewViewMessageMap() map[int32]*NewViewMessage {
+	if x != nil {
+		return x.NewViewNumberToNewViewMessageMap
+	}
+	return nil
+}
+
+type PrintLogRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeId        int32                  `protobuf:"varint,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrintLogRequest) Reset() {
+	*x = PrintLogRequest{}
+	mi := &file_proto_pbft_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrintLogRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrintLogRequest) ProtoMessage() {}
+
+func (x *PrintLogRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrintLogRequest.ProtoReflect.Descriptor instead.
+func (*PrintLogRequest) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *PrintLogRequest) GetNodeId() int32 {
+	if x != nil {
+		return x.NodeId
+	}
+	return 0
+}
+
+type PrintLogEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MessageType   string                 `protobuf:"bytes,1,opt,name=message_type,json=messageType,proto3" json:"message_type,omitempty"`
+	SequenceNum   int32                  `protobuf:"varint,2,opt,name=sequence_num,json=sequenceNum,proto3" json:"sequence_num,omitempty"`
+	FromNodeId    int32                  `protobuf:"varint,3,opt,name=from_node_id,json=fromNodeId,proto3" json:"from_node_id,omitempty"`
+	ToNodeId      int32                  `protobuf:"varint,4,opt,name=to_node_id,json=toNodeId,proto3" json:"to_node_id,omitempty"`
+	Direction     string                 `protobuf:"bytes,5,opt,name=direction,proto3" json:"direction,omitempty"`
+	ViewNumber    int32                  `protobuf:"varint,6,opt,name=view_number,json=viewNumber,proto3" json:"view_number,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrintLogEntry) Reset() {
+	*x = PrintLogEntry{}
+	mi := &file_proto_pbft_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrintLogEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrintLogEntry) ProtoMessage() {}
+
+func (x *PrintLogEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrintLogEntry.ProtoReflect.Descriptor instead.
+func (*PrintLogEntry) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *PrintLogEntry) GetMessageType() string {
+	if x != nil {
+		return x.MessageType
+	}
+	return ""
+}
+
+func (x *PrintLogEntry) GetSequenceNum() int32 {
+	if x != nil {
+		return x.SequenceNum
+	}
+	return 0
+}
+
+func (x *PrintLogEntry) GetFromNodeId() int32 {
+	if x != nil {
+		return x.FromNodeId
+	}
+	return 0
+}
+
+func (x *PrintLogEntry) GetToNodeId() int32 {
+	if x != nil {
+		return x.ToNodeId
+	}
+	return 0
+}
+
+func (x *PrintLogEntry) GetDirection() string {
+	if x != nil {
+		return x.Direction
+	}
+	return ""
+}
+
+func (x *PrintLogEntry) GetViewNumber() int32 {
+	if x != nil {
+		return x.ViewNumber
+	}
+	return 0
+}
+
+type PrintLogResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	PrintLogEntries []*PrintLogEntry       `protobuf:"bytes,1,rep,name=print_log_entries,json=printLogEntries,proto3" json:"print_log_entries,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PrintLogResponse) Reset() {
+	*x = PrintLogResponse{}
+	mi := &file_proto_pbft_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrintLogResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrintLogResponse) ProtoMessage() {}
+
+func (x *PrintLogResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrintLogResponse.ProtoReflect.Descriptor instead.
+func (*PrintLogResponse) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *PrintLogResponse) GetPrintLogEntries() []*PrintLogEntry {
+	if x != nil {
+		return x.PrintLogEntries
 	}
 	return nil
 }
@@ -1089,20 +1834,84 @@ const file_proto_pbft_proto_rawDesc = "" +
 	"\x11last_executed_seq\x18\x04 \x01(\x05R\x0flastExecutedSeq\x1a;\n" +
 	"\rBalancesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"e\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"2\n" +
+	"\x06Attack\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05nodes\x18\x02 \x03(\x05R\x05nodes\"\x8b\x01\n" +
 	"\x1bFlushAndUpdateStatusRequest\x12\x1d\n" +
 	"\n" +
 	"live_nodes\x18\x01 \x03(\x05R\tliveNodes\x12'\n" +
-	"\x0fbyzantine_nodes\x18\x02 \x03(\x05R\x0ebyzantineNodes2\x9c\x04\n" +
+	"\x0fbyzantine_nodes\x18\x02 \x03(\x05R\x0ebyzantineNodes\x12$\n" +
+	"\aattacks\x18\x03 \x03(\v2\n" +
+	".pb.AttackR\aattacks\"\xb6\x01\n" +
+	"\x11ViewChangeMessage\x12&\n" +
+	"\x0fnew_view_number\x18\x01 \x01(\x05R\rnewViewNumber\x12\x17\n" +
+	"\anode_id\x18\x02 \x01(\x05R\x06nodeId\x12B\n" +
+	"\x12prepared_proof_set\x18\x03 \x03(\v2\x14.pb.PreparedProofSetR\x10preparedProofSet\x12\x1c\n" +
+	"\tsignature\x18\x04 \x01(\fR\tsignature\"\xe8\x01\n" +
+	"\x10PreparedProofSet\x12'\n" +
+	"\x0fsequence_number\x18\x01 \x01(\x05R\x0esequenceNumber\x12\x1f\n" +
+	"\vview_number\x18\x02 \x01(\x05R\n" +
+	"viewNumber\x12\x16\n" +
+	"\x06digest\x18\x03 \x01(\tR\x06digest\x12'\n" +
+	"\x06proofs\x18\x04 \x03(\v2\x0f.pb.StatusProofR\x06proofs\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x121\n" +
+	"\vtransaction\x18\x06 \x01(\v2\x0f.pb.TransactionR\vtransaction\"\xb1\x01\n" +
+	"\vStatusProof\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\x05R\x06nodeId\x12\x12\n" +
+	"\x04view\x18\x02 \x01(\x05R\x04view\x12'\n" +
+	"\x0fsequence_number\x18\x03 \x01(\x05R\x0esequenceNumber\x12\x16\n" +
+	"\x06digest\x18\x04 \x01(\tR\x06digest\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1c\n" +
+	"\tsignature\x18\x06 \x01(\fR\tsignature\"\xee\x01\n" +
+	"\x0eNewViewMessage\x12&\n" +
+	"\x0fnew_view_number\x18\x01 \x01(\x05R\rnewViewNumber\x12\x1b\n" +
+	"\tsource_id\x18\x02 \x01(\x05R\bsourceId\x12?\n" +
+	"\fpre_prepares\x18\x03 \x03(\v2\x1c.pb.PrePrepareMessageRequestR\vprePrepares\x128\n" +
+	"\fview_changes\x18\x04 \x03(\v2\x15.pb.ViewChangeMessageR\vviewChanges\x12\x1c\n" +
+	"\tsignature\x18\x05 \x01(\fR\tsignature\"=\n" +
+	"\x12PrintStatusRequest\x12'\n" +
+	"\x0fsequence_number\x18\x01 \x01(\x05R\x0esequenceNumber\"\xa2\x01\n" +
+	"\x13PrintStatusResponse\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\x05R\x06nodeId\x12'\n" +
+	"\x0fsequence_number\x18\x02 \x01(\x05R\x0esequenceNumber\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x121\n" +
+	"\vtransaction\x18\x04 \x01(\v2\x0f.pb.TransactionR\vtransaction\"+\n" +
+	"\x10PrintViewRequest\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\x05R\x06nodeId\"\x86\x02\n" +
+	"\x11PrintViewResponse\x12\x87\x01\n" +
+	" newViewNumberToNewViewMessageMap\x18\x01 \x03(\v2;.pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntryR newViewNumberToNewViewMessageMap\x1ag\n" +
+	"%NewViewNumberToNewViewMessageMapEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12(\n" +
+	"\x05value\x18\x02 \x01(\v2\x12.pb.NewViewMessageR\x05value:\x028\x01\"*\n" +
+	"\x0fPrintLogRequest\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\x05R\x06nodeId\"\xd4\x01\n" +
+	"\rPrintLogEntry\x12!\n" +
+	"\fmessage_type\x18\x01 \x01(\tR\vmessageType\x12!\n" +
+	"\fsequence_num\x18\x02 \x01(\x05R\vsequenceNum\x12 \n" +
+	"\ffrom_node_id\x18\x03 \x01(\x05R\n" +
+	"fromNodeId\x12\x1c\n" +
+	"\n" +
+	"to_node_id\x18\x04 \x01(\x05R\btoNodeId\x12\x1c\n" +
+	"\tdirection\x18\x05 \x01(\tR\tdirection\x12\x1f\n" +
+	"\vview_number\x18\x06 \x01(\x05R\n" +
+	"viewNumber\"Q\n" +
+	"\x10PrintLogResponse\x12=\n" +
+	"\x11print_log_entries\x18\x01 \x03(\v2\x11.pb.PrintLogEntryR\x0fprintLogEntries2\xc9\x06\n" +
 	"\vPBFTReplica\x12I\n" +
 	"\x13SendRequestToLeader\x12\x18.pb.ClientRequestMessage\x1a\x18.pb.ReplyToClientRequest\x12M\n" +
 	"\x0eSendPrePrepare\x12\x1c.pb.PrePrepareMessageRequest\x1a\x1d.pb.PrePrepareMessageResponse\x12D\n" +
 	"\vSendPrepare\x12\x19.pb.PrepareMessageRequest\x1a\x1a.pb.PrepareMessageResponse\x12A\n" +
 	"\n" +
-	"SendCommit\x12\x18.pb.CommitMessageRequest\x1a\x19.pb.CommitMessageResponse\x12`\n" +
-	"%FlushPreviousDataAndUpdatePeersStatus\x12\x1f.pb.FlushAndUpdateStatusRequest\x1a\x16.google.protobuf.Empty\x12P\n" +
-	"\x11ReadClientBalance\x12\x1c.pb.ReadClientBalanceRequest\x1a\x1d.pb.ReadClientBalanceResponse\x126\n" +
-	"\aPrintDB\x12\x16.google.protobuf.Empty\x1a\x13.pb.PrintDBResponse2L\n" +
+	"SendCommit\x12\x18.pb.CommitMessageRequest\x1a\x19.pb.CommitMessageResponse\x12P\n" +
+	"\x11ReadClientBalance\x12\x1c.pb.ReadClientBalanceRequest\x1a\x1d.pb.ReadClientBalanceResponse\x12`\n" +
+	"%FlushPreviousDataAndUpdatePeersStatus\x12\x1f.pb.FlushAndUpdateStatusRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
+	"\x0eSendViewChange\x12\x15.pb.ViewChangeMessage\x1a\x16.google.protobuf.Empty\x129\n" +
+	"\vSendNewView\x12\x12.pb.NewViewMessage\x1a\x16.google.protobuf.Empty\x126\n" +
+	"\aPrintDB\x12\x16.google.protobuf.Empty\x1a\x13.pb.PrintDBResponse\x12>\n" +
+	"\vPrintStatus\x12\x16.pb.PrintStatusRequest\x1a\x17.pb.PrintStatusResponse\x128\n" +
+	"\tPrintView\x12\x14.pb.PrintViewRequest\x1a\x15.pb.PrintViewResponse\x125\n" +
+	"\bPrintLog\x12\x13.pb.PrintLogRequest\x1a\x14.pb.PrintLogResponse2L\n" +
 	"\x0eClientCallback\x12:\n" +
 	"\x15ReplyToClientFromNode\x12\x18.pb.ReplyToClientRequest\x1a\a.pb.AckB Z\x1epbft-bank-application/proto;pbb\x06proto3"
 
@@ -1118,7 +1927,7 @@ func file_proto_pbft_proto_rawDescGZIP() []byte {
 	return file_proto_pbft_proto_rawDescData
 }
 
-var file_proto_pbft_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_proto_pbft_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_proto_pbft_proto_goTypes = []any{
 	(*Transaction)(nil),                 // 0: pb.Transaction
 	(*PrePrepareMessageRequest)(nil),    // 1: pb.PrePrepareMessageRequest
@@ -1133,37 +1942,70 @@ var file_proto_pbft_proto_goTypes = []any{
 	(*ReadClientBalanceRequest)(nil),    // 10: pb.ReadClientBalanceRequest
 	(*ReadClientBalanceResponse)(nil),   // 11: pb.ReadClientBalanceResponse
 	(*PrintDBResponse)(nil),             // 12: pb.PrintDBResponse
-	(*FlushAndUpdateStatusRequest)(nil), // 13: pb.FlushAndUpdateStatusRequest
-	nil,                                 // 14: pb.PrintDBResponse.BalancesEntry
-	(*emptypb.Empty)(nil),               // 15: google.protobuf.Empty
+	(*Attack)(nil),                      // 13: pb.Attack
+	(*FlushAndUpdateStatusRequest)(nil), // 14: pb.FlushAndUpdateStatusRequest
+	(*ViewChangeMessage)(nil),           // 15: pb.ViewChangeMessage
+	(*PreparedProofSet)(nil),            // 16: pb.PreparedProofSet
+	(*StatusProof)(nil),                 // 17: pb.StatusProof
+	(*NewViewMessage)(nil),              // 18: pb.NewViewMessage
+	(*PrintStatusRequest)(nil),          // 19: pb.PrintStatusRequest
+	(*PrintStatusResponse)(nil),         // 20: pb.PrintStatusResponse
+	(*PrintViewRequest)(nil),            // 21: pb.PrintViewRequest
+	(*PrintViewResponse)(nil),           // 22: pb.PrintViewResponse
+	(*PrintLogRequest)(nil),             // 23: pb.PrintLogRequest
+	(*PrintLogEntry)(nil),               // 24: pb.PrintLogEntry
+	(*PrintLogResponse)(nil),            // 25: pb.PrintLogResponse
+	nil,                                 // 26: pb.PrintDBResponse.BalancesEntry
+	nil,                                 // 27: pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry
+	(*emptypb.Empty)(nil),               // 28: google.protobuf.Empty
 }
 var file_proto_pbft_proto_depIdxs = []int32{
 	0,  // 0: pb.PrePrepareMessageRequest.transaction:type_name -> pb.Transaction
 	2,  // 1: pb.PrepareMessageRequest.pre_prepared_message_response:type_name -> pb.PrePrepareMessageResponse
 	4,  // 2: pb.CommitMessageRequest.prepared_message_response:type_name -> pb.PrepareMessageResponse
 	0,  // 3: pb.ClientRequestMessage.transaction:type_name -> pb.Transaction
-	14, // 4: pb.PrintDBResponse.balances:type_name -> pb.PrintDBResponse.BalancesEntry
-	7,  // 5: pb.PBFTReplica.SendRequestToLeader:input_type -> pb.ClientRequestMessage
-	1,  // 6: pb.PBFTReplica.SendPrePrepare:input_type -> pb.PrePrepareMessageRequest
-	3,  // 7: pb.PBFTReplica.SendPrepare:input_type -> pb.PrepareMessageRequest
-	5,  // 8: pb.PBFTReplica.SendCommit:input_type -> pb.CommitMessageRequest
-	13, // 9: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:input_type -> pb.FlushAndUpdateStatusRequest
-	10, // 10: pb.PBFTReplica.ReadClientBalance:input_type -> pb.ReadClientBalanceRequest
-	15, // 11: pb.PBFTReplica.PrintDB:input_type -> google.protobuf.Empty
-	8,  // 12: pb.ClientCallback.ReplyToClientFromNode:input_type -> pb.ReplyToClientRequest
-	8,  // 13: pb.PBFTReplica.SendRequestToLeader:output_type -> pb.ReplyToClientRequest
-	2,  // 14: pb.PBFTReplica.SendPrePrepare:output_type -> pb.PrePrepareMessageResponse
-	4,  // 15: pb.PBFTReplica.SendPrepare:output_type -> pb.PrepareMessageResponse
-	6,  // 16: pb.PBFTReplica.SendCommit:output_type -> pb.CommitMessageResponse
-	15, // 17: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:output_type -> google.protobuf.Empty
-	11, // 18: pb.PBFTReplica.ReadClientBalance:output_type -> pb.ReadClientBalanceResponse
-	12, // 19: pb.PBFTReplica.PrintDB:output_type -> pb.PrintDBResponse
-	9,  // 20: pb.ClientCallback.ReplyToClientFromNode:output_type -> pb.Ack
-	13, // [13:21] is the sub-list for method output_type
-	5,  // [5:13] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	26, // 4: pb.PrintDBResponse.balances:type_name -> pb.PrintDBResponse.BalancesEntry
+	13, // 5: pb.FlushAndUpdateStatusRequest.attacks:type_name -> pb.Attack
+	16, // 6: pb.ViewChangeMessage.prepared_proof_set:type_name -> pb.PreparedProofSet
+	17, // 7: pb.PreparedProofSet.proofs:type_name -> pb.StatusProof
+	0,  // 8: pb.PreparedProofSet.transaction:type_name -> pb.Transaction
+	1,  // 9: pb.NewViewMessage.pre_prepares:type_name -> pb.PrePrepareMessageRequest
+	15, // 10: pb.NewViewMessage.view_changes:type_name -> pb.ViewChangeMessage
+	0,  // 11: pb.PrintStatusResponse.transaction:type_name -> pb.Transaction
+	27, // 12: pb.PrintViewResponse.newViewNumberToNewViewMessageMap:type_name -> pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry
+	24, // 13: pb.PrintLogResponse.print_log_entries:type_name -> pb.PrintLogEntry
+	18, // 14: pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry.value:type_name -> pb.NewViewMessage
+	7,  // 15: pb.PBFTReplica.SendRequestToLeader:input_type -> pb.ClientRequestMessage
+	1,  // 16: pb.PBFTReplica.SendPrePrepare:input_type -> pb.PrePrepareMessageRequest
+	3,  // 17: pb.PBFTReplica.SendPrepare:input_type -> pb.PrepareMessageRequest
+	5,  // 18: pb.PBFTReplica.SendCommit:input_type -> pb.CommitMessageRequest
+	10, // 19: pb.PBFTReplica.ReadClientBalance:input_type -> pb.ReadClientBalanceRequest
+	14, // 20: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:input_type -> pb.FlushAndUpdateStatusRequest
+	15, // 21: pb.PBFTReplica.SendViewChange:input_type -> pb.ViewChangeMessage
+	18, // 22: pb.PBFTReplica.SendNewView:input_type -> pb.NewViewMessage
+	28, // 23: pb.PBFTReplica.PrintDB:input_type -> google.protobuf.Empty
+	19, // 24: pb.PBFTReplica.PrintStatus:input_type -> pb.PrintStatusRequest
+	21, // 25: pb.PBFTReplica.PrintView:input_type -> pb.PrintViewRequest
+	23, // 26: pb.PBFTReplica.PrintLog:input_type -> pb.PrintLogRequest
+	8,  // 27: pb.ClientCallback.ReplyToClientFromNode:input_type -> pb.ReplyToClientRequest
+	8,  // 28: pb.PBFTReplica.SendRequestToLeader:output_type -> pb.ReplyToClientRequest
+	2,  // 29: pb.PBFTReplica.SendPrePrepare:output_type -> pb.PrePrepareMessageResponse
+	4,  // 30: pb.PBFTReplica.SendPrepare:output_type -> pb.PrepareMessageResponse
+	6,  // 31: pb.PBFTReplica.SendCommit:output_type -> pb.CommitMessageResponse
+	11, // 32: pb.PBFTReplica.ReadClientBalance:output_type -> pb.ReadClientBalanceResponse
+	28, // 33: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:output_type -> google.protobuf.Empty
+	28, // 34: pb.PBFTReplica.SendViewChange:output_type -> google.protobuf.Empty
+	28, // 35: pb.PBFTReplica.SendNewView:output_type -> google.protobuf.Empty
+	12, // 36: pb.PBFTReplica.PrintDB:output_type -> pb.PrintDBResponse
+	20, // 37: pb.PBFTReplica.PrintStatus:output_type -> pb.PrintStatusResponse
+	22, // 38: pb.PBFTReplica.PrintView:output_type -> pb.PrintViewResponse
+	25, // 39: pb.PBFTReplica.PrintLog:output_type -> pb.PrintLogResponse
+	9,  // 40: pb.ClientCallback.ReplyToClientFromNode:output_type -> pb.Ack
+	28, // [28:41] is the sub-list for method output_type
+	15, // [15:28] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_proto_pbft_proto_init() }
@@ -1177,7 +2019,7 @@ func file_proto_pbft_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_pbft_proto_rawDesc), len(file_proto_pbft_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"pbft-bank-application/database"
 
 	gRPC1 "pbft-bank-application/gRPC"
 	"pbft-bank-application/internal/node"
@@ -15,6 +16,8 @@ func main() {
 	priv := flag.String("priv", "", "path to node's private key (e.g., keys/node1.priv)")
 	manifest := flag.String("manifest", "cluster/manifest.json", "path to cluster manifest")
 	flag.Parse()
+	database.InitRedisClient("localhost:6379")
+	fmt.Println("Connected to Redis at localhost:6379")
 
 	if *priv == "" {
 		*priv = filepath.Join("keys", fmt.Sprintf("node%d.priv", *id))

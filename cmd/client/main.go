@@ -23,8 +23,8 @@ import (
 
 const (
 	manifestPath = "cluster/manifest.json"
-	csvPath      = `C:\Users\skotha\Downloads\PBFT_Test.csv`
-	callbackAddr = "localhost:7000" // single callback server for all clients
+	csvPath      = `C:\Users\skotha\Downloads\Project-2-Testcases.csv`
+	callbackAddr = "localhost:7000"
 )
 
 func main() {
@@ -59,6 +59,16 @@ func main() {
 	for si, s := range sets {
 		log.Printf("========== SET %d ==========", s.Number)
 
+		if len(s.Attacks) > 0 {
+			for _, a := range s.Attacks {
+				if len(a.Nodes) > 0 {
+					log.Printf("  Attack: %s | Nodes: %v", a.Name, a.Nodes)
+				} else {
+					log.Printf("  Attack: %s | Nodes: (none)", a.Name)
+				}
+			}
+		}
+
 		h.ResetForNewSet()
 
 		h.AliveNodes = s.Live
@@ -66,7 +76,9 @@ func main() {
 
 		h.ByzantineNodes = s.Byz
 
-		flushAllReplicas(ctx, h)
+		h.Attacks = s.Attacks
+
+		flushAllReplicasAndUpdateNodeStatus(ctx, h)
 
 		liveAddrs := NodeIdsToAddrs(s.Live, h)
 		byzAddrs := NodeIdsToAddrs(s.Byz, h)
@@ -87,27 +99,24 @@ func main() {
 
 // Run all transactions of a set with per-client sequentiality:
 // - Different clients run in parallel
-// - For the same client (FromClientId), txs run strictly one after another (by Time).
+// - For the same client, txs run strictly one after another (by Time).
 func runClientTxsSequentially(
 	ctx context.Context,
 	h *cl.Hub,
 	txs []*pb.Transaction,
 	liveAddrs, byzAddrs []string,
 ) {
-	// 1) Group by client
 	byClient := make(map[string][]*pb.Transaction)
 	for _, tx := range txs {
 		cid := tx.FromClientId
 		byClient[cid] = append(byClient[cid], tx)
 	}
 
-	// 2) Sort each client's txs by Time (ascending)
 	for cid := range byClient {
 		list := byClient[cid]
 		sort.Slice(list, func(i, j int) bool { return list[i].Time < list[j].Time })
 	}
 
-	// 3) One goroutine per client, sequentially send that client's txs
 	var wg sync.WaitGroup
 	for cid, list := range byClient {
 		cid := cid
@@ -210,7 +219,7 @@ func NodeIdsToAddrs(nodeIds []int32, h *cl.Hub) []string {
 	return out
 }
 
-func flushAllReplicas(ctx context.Context, h *cl.Hub) {
+func flushAllReplicasAndUpdateNodeStatus(ctx context.Context, h *cl.Hub) {
 	var wg sync.WaitGroup
 	for id, addr := range h.ReplicaAddrs {
 		wg.Add(1)
@@ -222,10 +231,12 @@ func flushAllReplicas(ctx context.Context, h *cl.Hub) {
 			}
 			defer conn.Close()
 			cli := pb.NewPBFTReplicaClient(conn)
-			_, _ = cli.FlushPreviousDataAndUpdatePeersStatus(ctx, &pb.FlushAndUpdateStatusRequest{
+			req := &pb.FlushAndUpdateStatusRequest{
 				LiveNodes:      h.AliveNodes,
 				ByzantineNodes: h.ByzantineNodes,
-			})
+				Attacks:        convertAttacksToProto(h.Attacks),
+			}
+			_, _ = cli.FlushPreviousDataAndUpdatePeersStatus(ctx, req)
 		}(id, addr)
 	}
 	wg.Wait()
@@ -241,4 +252,18 @@ func hSetLatestView(h *cl.Hub, v int32) {
 	h.Mu.Lock()
 	h.LatestView = v
 	h.Mu.Unlock()
+}
+
+func convertAttacksToProto(attacks []*cl.Attack) []*pb.Attack {
+	if len(attacks) == 0 {
+		return nil
+	}
+	out := make([]*pb.Attack, 0, len(attacks))
+	for _, a := range attacks {
+		out = append(out, &pb.Attack{
+			Name:  a.Name,
+			Nodes: a.Nodes,
+		})
+	}
+	return out
 }

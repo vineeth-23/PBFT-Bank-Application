@@ -24,9 +24,14 @@ const (
 	PBFTReplica_SendPrePrepare_FullMethodName                        = "/pb.PBFTReplica/SendPrePrepare"
 	PBFTReplica_SendPrepare_FullMethodName                           = "/pb.PBFTReplica/SendPrepare"
 	PBFTReplica_SendCommit_FullMethodName                            = "/pb.PBFTReplica/SendCommit"
-	PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_FullMethodName = "/pb.PBFTReplica/FlushPreviousDataAndUpdatePeersStatus"
 	PBFTReplica_ReadClientBalance_FullMethodName                     = "/pb.PBFTReplica/ReadClientBalance"
+	PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_FullMethodName = "/pb.PBFTReplica/FlushPreviousDataAndUpdatePeersStatus"
+	PBFTReplica_SendViewChange_FullMethodName                        = "/pb.PBFTReplica/SendViewChange"
+	PBFTReplica_SendNewView_FullMethodName                           = "/pb.PBFTReplica/SendNewView"
 	PBFTReplica_PrintDB_FullMethodName                               = "/pb.PBFTReplica/PrintDB"
+	PBFTReplica_PrintStatus_FullMethodName                           = "/pb.PBFTReplica/PrintStatus"
+	PBFTReplica_PrintView_FullMethodName                             = "/pb.PBFTReplica/PrintView"
+	PBFTReplica_PrintLog_FullMethodName                              = "/pb.PBFTReplica/PrintLog"
 )
 
 // PBFTReplicaClient is the client API for PBFTReplica service.
@@ -37,10 +42,16 @@ type PBFTReplicaClient interface {
 	SendPrePrepare(ctx context.Context, in *PrePrepareMessageRequest, opts ...grpc.CallOption) (*PrePrepareMessageResponse, error)
 	SendPrepare(ctx context.Context, in *PrepareMessageRequest, opts ...grpc.CallOption) (*PrepareMessageResponse, error)
 	SendCommit(ctx context.Context, in *CommitMessageRequest, opts ...grpc.CallOption) (*CommitMessageResponse, error)
-	FlushPreviousDataAndUpdatePeersStatus(ctx context.Context, in *FlushAndUpdateStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ReadClientBalance(ctx context.Context, in *ReadClientBalanceRequest, opts ...grpc.CallOption) (*ReadClientBalanceResponse, error)
+	FlushPreviousDataAndUpdatePeersStatus(ctx context.Context, in *FlushAndUpdateStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// View Change/New View RPCs:
+	SendViewChange(ctx context.Context, in *ViewChangeMessage, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SendNewView(ctx context.Context, in *NewViewMessage, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Client funcns
 	PrintDB(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PrintDBResponse, error)
+	PrintStatus(ctx context.Context, in *PrintStatusRequest, opts ...grpc.CallOption) (*PrintStatusResponse, error)
+	PrintView(ctx context.Context, in *PrintViewRequest, opts ...grpc.CallOption) (*PrintViewResponse, error)
+	PrintLog(ctx context.Context, in *PrintLogRequest, opts ...grpc.CallOption) (*PrintLogResponse, error)
 }
 
 type pBFTReplicaClient struct {
@@ -91,6 +102,16 @@ func (c *pBFTReplicaClient) SendCommit(ctx context.Context, in *CommitMessageReq
 	return out, nil
 }
 
+func (c *pBFTReplicaClient) ReadClientBalance(ctx context.Context, in *ReadClientBalanceRequest, opts ...grpc.CallOption) (*ReadClientBalanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadClientBalanceResponse)
+	err := c.cc.Invoke(ctx, PBFTReplica_ReadClientBalance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *pBFTReplicaClient) FlushPreviousDataAndUpdatePeersStatus(ctx context.Context, in *FlushAndUpdateStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -101,10 +122,20 @@ func (c *pBFTReplicaClient) FlushPreviousDataAndUpdatePeersStatus(ctx context.Co
 	return out, nil
 }
 
-func (c *pBFTReplicaClient) ReadClientBalance(ctx context.Context, in *ReadClientBalanceRequest, opts ...grpc.CallOption) (*ReadClientBalanceResponse, error) {
+func (c *pBFTReplicaClient) SendViewChange(ctx context.Context, in *ViewChangeMessage, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReadClientBalanceResponse)
-	err := c.cc.Invoke(ctx, PBFTReplica_ReadClientBalance_FullMethodName, in, out, cOpts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PBFTReplica_SendViewChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pBFTReplicaClient) SendNewView(ctx context.Context, in *NewViewMessage, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PBFTReplica_SendNewView_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +152,36 @@ func (c *pBFTReplicaClient) PrintDB(ctx context.Context, in *emptypb.Empty, opts
 	return out, nil
 }
 
+func (c *pBFTReplicaClient) PrintStatus(ctx context.Context, in *PrintStatusRequest, opts ...grpc.CallOption) (*PrintStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PrintStatusResponse)
+	err := c.cc.Invoke(ctx, PBFTReplica_PrintStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pBFTReplicaClient) PrintView(ctx context.Context, in *PrintViewRequest, opts ...grpc.CallOption) (*PrintViewResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PrintViewResponse)
+	err := c.cc.Invoke(ctx, PBFTReplica_PrintView_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pBFTReplicaClient) PrintLog(ctx context.Context, in *PrintLogRequest, opts ...grpc.CallOption) (*PrintLogResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PrintLogResponse)
+	err := c.cc.Invoke(ctx, PBFTReplica_PrintLog_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PBFTReplicaServer is the server API for PBFTReplica service.
 // All implementations must embed UnimplementedPBFTReplicaServer
 // for forward compatibility.
@@ -129,10 +190,16 @@ type PBFTReplicaServer interface {
 	SendPrePrepare(context.Context, *PrePrepareMessageRequest) (*PrePrepareMessageResponse, error)
 	SendPrepare(context.Context, *PrepareMessageRequest) (*PrepareMessageResponse, error)
 	SendCommit(context.Context, *CommitMessageRequest) (*CommitMessageResponse, error)
-	FlushPreviousDataAndUpdatePeersStatus(context.Context, *FlushAndUpdateStatusRequest) (*emptypb.Empty, error)
 	ReadClientBalance(context.Context, *ReadClientBalanceRequest) (*ReadClientBalanceResponse, error)
+	FlushPreviousDataAndUpdatePeersStatus(context.Context, *FlushAndUpdateStatusRequest) (*emptypb.Empty, error)
+	// View Change/New View RPCs:
+	SendViewChange(context.Context, *ViewChangeMessage) (*emptypb.Empty, error)
+	SendNewView(context.Context, *NewViewMessage) (*emptypb.Empty, error)
 	// Client funcns
 	PrintDB(context.Context, *emptypb.Empty) (*PrintDBResponse, error)
+	PrintStatus(context.Context, *PrintStatusRequest) (*PrintStatusResponse, error)
+	PrintView(context.Context, *PrintViewRequest) (*PrintViewResponse, error)
+	PrintLog(context.Context, *PrintLogRequest) (*PrintLogResponse, error)
 	mustEmbedUnimplementedPBFTReplicaServer()
 }
 
@@ -155,14 +222,29 @@ func (UnimplementedPBFTReplicaServer) SendPrepare(context.Context, *PrepareMessa
 func (UnimplementedPBFTReplicaServer) SendCommit(context.Context, *CommitMessageRequest) (*CommitMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendCommit not implemented")
 }
-func (UnimplementedPBFTReplicaServer) FlushPreviousDataAndUpdatePeersStatus(context.Context, *FlushAndUpdateStatusRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FlushPreviousDataAndUpdatePeersStatus not implemented")
-}
 func (UnimplementedPBFTReplicaServer) ReadClientBalance(context.Context, *ReadClientBalanceRequest) (*ReadClientBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadClientBalance not implemented")
 }
+func (UnimplementedPBFTReplicaServer) FlushPreviousDataAndUpdatePeersStatus(context.Context, *FlushAndUpdateStatusRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FlushPreviousDataAndUpdatePeersStatus not implemented")
+}
+func (UnimplementedPBFTReplicaServer) SendViewChange(context.Context, *ViewChangeMessage) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendViewChange not implemented")
+}
+func (UnimplementedPBFTReplicaServer) SendNewView(context.Context, *NewViewMessage) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendNewView not implemented")
+}
 func (UnimplementedPBFTReplicaServer) PrintDB(context.Context, *emptypb.Empty) (*PrintDBResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PrintDB not implemented")
+}
+func (UnimplementedPBFTReplicaServer) PrintStatus(context.Context, *PrintStatusRequest) (*PrintStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PrintStatus not implemented")
+}
+func (UnimplementedPBFTReplicaServer) PrintView(context.Context, *PrintViewRequest) (*PrintViewResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PrintView not implemented")
+}
+func (UnimplementedPBFTReplicaServer) PrintLog(context.Context, *PrintLogRequest) (*PrintLogResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PrintLog not implemented")
 }
 func (UnimplementedPBFTReplicaServer) mustEmbedUnimplementedPBFTReplicaServer() {}
 func (UnimplementedPBFTReplicaServer) testEmbeddedByValue()                     {}
@@ -257,24 +339,6 @@ func _PBFTReplica_SendCommit_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FlushAndUpdateStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PBFTReplicaServer).FlushPreviousDataAndUpdatePeersStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PBFTReplicaServer).FlushPreviousDataAndUpdatePeersStatus(ctx, req.(*FlushAndUpdateStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _PBFTReplica_ReadClientBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReadClientBalanceRequest)
 	if err := dec(in); err != nil {
@@ -293,6 +357,60 @@ func _PBFTReplica_ReadClientBalance_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FlushAndUpdateStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).FlushPreviousDataAndUpdatePeersStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).FlushPreviousDataAndUpdatePeersStatus(ctx, req.(*FlushAndUpdateStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PBFTReplica_SendViewChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ViewChangeMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).SendViewChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_SendViewChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).SendViewChange(ctx, req.(*ViewChangeMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PBFTReplica_SendNewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NewViewMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).SendNewView(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_SendNewView_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).SendNewView(ctx, req.(*NewViewMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PBFTReplica_PrintDB_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -307,6 +425,60 @@ func _PBFTReplica_PrintDB_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PBFTReplicaServer).PrintDB(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PBFTReplica_PrintStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrintStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).PrintStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_PrintStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).PrintStatus(ctx, req.(*PrintStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PBFTReplica_PrintView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrintViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).PrintView(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_PrintView_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).PrintView(ctx, req.(*PrintViewRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PBFTReplica_PrintLog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrintLogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).PrintLog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_PrintLog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).PrintLog(ctx, req.(*PrintLogRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -335,16 +507,36 @@ var PBFTReplica_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PBFTReplica_SendCommit_Handler,
 		},
 		{
-			MethodName: "FlushPreviousDataAndUpdatePeersStatus",
-			Handler:    _PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_Handler,
-		},
-		{
 			MethodName: "ReadClientBalance",
 			Handler:    _PBFTReplica_ReadClientBalance_Handler,
 		},
 		{
+			MethodName: "FlushPreviousDataAndUpdatePeersStatus",
+			Handler:    _PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_Handler,
+		},
+		{
+			MethodName: "SendViewChange",
+			Handler:    _PBFTReplica_SendViewChange_Handler,
+		},
+		{
+			MethodName: "SendNewView",
+			Handler:    _PBFTReplica_SendNewView_Handler,
+		},
+		{
 			MethodName: "PrintDB",
 			Handler:    _PBFTReplica_PrintDB_Handler,
+		},
+		{
+			MethodName: "PrintStatus",
+			Handler:    _PBFTReplica_PrintStatus_Handler,
+		},
+		{
+			MethodName: "PrintView",
+			Handler:    _PBFTReplica_PrintView_Handler,
+		},
+		{
+			MethodName: "PrintLog",
+			Handler:    _PBFTReplica_PrintLog_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

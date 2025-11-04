@@ -4,9 +4,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
+	"pbft-bank-application/database"
 	"strings"
 	"sync"
+	"time"
 
 	pb "pbft-bank-application/pbft-bank-application/proto"
 
@@ -79,6 +82,25 @@ type LogEntry struct {
 	CommittedProof map[int32][]*StatusProof
 }
 
+type Attack struct {
+	Name  string
+	Nodes []int32
+}
+
+type MessageLogEntry struct {
+	MessageType string
+	SequenceNum int32
+	FromNodeID  int32
+	ToNodeID    int32
+	Direction   string
+	ViewNumber  int32
+}
+
+type LogKey struct {
+	SeqNumber  int32
+	ViewNumber int32
+}
+
 // Node holds replica state. It will be wrapped by the gRPC server type.
 type Node struct {
 	ID             int32
@@ -101,11 +123,23 @@ type Node struct {
 	LogEntries map[int32]*LogEntry
 	Balances   map[string]int32
 
-	AlreadyExecutedTransactions map[string]*pb.ReplyToClientRequest
-	LastExecutedSequenceNumber  int32
+	AlreadyExecutedTransactions               map[string]*pb.ReplyToClientRequest
+	LastExecutedSequenceNumber                int32
+	ViewNumberToLastExecutedSequenceNumberMap map[int32]int32
 
 	IsAlive     bool
 	IsMalicious bool
+
+	Attacks []*Attack
+
+	electionTimer       *time.Timer
+	ViewChangeMessages  map[int32][]*pb.ViewChangeMessage
+	TriggeredViewChange map[int32]bool
+
+	AllNewViewMessagesForPrinting map[int32]*pb.NewViewMessage
+	AllMessagesForPrintingLog     []*MessageLogEntry
+
+	//ViewChangeOngoing   bool
 
 	mu sync.Mutex
 }
@@ -116,18 +150,22 @@ func NewNode(id int32, address string, peers map[int32]string) *Node {
 		panic(err)
 	}
 	n := &Node{
-		ID:                          id,
-		Address:                     address,
-		ViewNumber:                  0,
-		SequenceNumber:              0,
-		PrivKey:                     priv,
-		PubKey:                      pub,
-		PubKeysOfNodes:              make(map[int32]ed25519.PublicKey),
-		LogEntries:                  make(map[int32]*LogEntry),
-		Balances:                    make(map[string]int32),
-		AlreadyExecutedTransactions: make(map[string]*pb.ReplyToClientRequest),
-		LastExecutedSequenceNumber:  0,
-		IsMalicious:                 false,
+		ID:                            id,
+		Address:                       address,
+		ViewNumber:                    0,
+		SequenceNumber:                0,
+		PrivKey:                       priv,
+		PubKey:                        pub,
+		PubKeysOfNodes:                make(map[int32]ed25519.PublicKey),
+		LogEntries:                    make(map[int32]*LogEntry),
+		Balances:                      make(map[string]int32),
+		AlreadyExecutedTransactions:   make(map[string]*pb.ReplyToClientRequest),
+		TriggeredViewChange:           make(map[int32]bool),
+		AllNewViewMessagesForPrinting: make(map[int32]*pb.NewViewMessage),
+		AllMessagesForPrintingLog:     make([]*MessageLogEntry, 0),
+		LastExecutedSequenceNumber:    0,
+		ViewNumberToLastExecutedSequenceNumberMap: make(map[int32]int32),
+		IsMalicious: false,
 	}
 	n.Peers = peers
 
@@ -135,48 +173,91 @@ func NewNode(id int32, address string, peers map[int32]string) *Node {
 		n.Balances[string(r)] = 10
 	}
 
+	for r := 'A'; r <= 'J'; r++ {
+		clientID := string(r)
+		err := database.UpdateClientBalance(id, clientID, 10)
+		if err != nil {
+			log.Printf("[Node %d] ⚠️ Failed to initialize Redis balance for client=%s: %v", id, clientID, err)
+		}
+	}
+
 	return n
 }
 
-func (n *Node) ResetForNewSetAndUpdateNodeStatus(req *pb.FlushAndUpdateStatusRequest) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
+func (s *Node) ResetForNewSetAndUpdateNodeStatus(req *pb.FlushAndUpdateStatusRequest) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	n.LogEntries = make(map[int32]*LogEntry)
-	n.AlreadyExecutedTransactions = make(map[string]*pb.ReplyToClientRequest)
-	n.LastExecutedSequenceNumber = 0
-	n.SequenceNumber = 0
-	n.ViewNumber = 0
-	n.IsAlive = false
-	n.IsMalicious = false
+	s.LogEntries = make(map[int32]*LogEntry)
+	s.AlreadyExecutedTransactions = make(map[string]*pb.ReplyToClientRequest)
+	s.LastExecutedSequenceNumber = 0
+	s.ViewNumberToLastExecutedSequenceNumberMap = make(map[int32]int32)
+	s.SequenceNumber = 0
+	s.ViewNumber = 0
+	s.IsAlive = false
+	s.IsMalicious = false
+	s.Attacks = nil
+	s.ViewChangeMessages = make(map[int32][]*pb.ViewChangeMessage)
+	s.AllNewViewMessagesForPrinting = make(map[int32]*pb.NewViewMessage)
+	s.AllMessagesForPrintingLog = make([]*MessageLogEntry, 0)
+	s.TriggeredViewChange = make(map[int32]bool)
+	//s.ViewChangeOngoing = false
+	if s.electionTimer != nil {
+		s.electionTimer.Stop()
+	}
+	s.electionTimer = nil
 
-	n.AlivePeers = make([]*int32, len(req.GetLiveNodes()))
+	s.AlivePeers = make([]*int32, len(req.GetLiveNodes()))
 	for i, v := range req.LiveNodes {
 		val := v
-		if val == n.ID {
-			n.IsAlive = true
+		if val == s.ID {
+			s.IsAlive = true
 		}
-		n.AlivePeers[i] = &val
+		s.AlivePeers[i] = &val
 	}
 
-	n.MaliciousPeers = make([]*int32, len(req.GetByzantineNodes()))
+	s.MaliciousPeers = make([]*int32, len(req.GetByzantineNodes()))
 	for i, v := range req.GetByzantineNodes() {
 		val := v
-		if val == n.ID {
-			n.IsMalicious = true
+		if val == s.ID {
+			s.IsMalicious = true
 		}
-		n.MaliciousPeers[i] = &val
+		s.MaliciousPeers[i] = &val
 	}
 
-	n.Balances = make(map[string]int32)
+	s.Balances = make(map[string]int32)
 	for r := 'A'; r <= 'J'; r++ {
-		n.Balances[string(r)] = 10
+		s.Balances[string(r)] = 10
 	}
 
+	for nodeID := int32(1); nodeID <= 5; nodeID++ {
+		for r := 'A'; r <= 'J'; r++ {
+			clientID := string(r)
+			err := database.UpdateClientBalance(nodeID, clientID, 10)
+			if err != nil {
+				log.Printf("[Node %d] ⚠️ Failed to reset Redis balance for node=%d client=%s: %v",
+					s.ID, nodeID, clientID, err)
+			}
+		}
+	}
+
+	s.Attacks = convertAttacksFromProto(req.Attacks)
+}
+
+func (n *Node) AddMessageLog(messageType string, direction string, seqNum, fromID, toID, viewNum int32) {
+	entry := &MessageLogEntry{
+		MessageType: messageType,
+		SequenceNum: seqNum,
+		FromNodeID:  fromID,
+		ToNodeID:    toID,
+		Direction:   direction,
+		ViewNumber:  viewNum,
+	}
+	n.AllMessagesForPrintingLog = append(n.AllMessagesForPrintingLog, entry)
 }
 
 // Load the node's private key (hex-encoded 64-byte ed25519)
-func (n *Node) LoadPrivateKey(privHexPath string) error {
+func (s *Node) LoadPrivateKey(privHexPath string) error {
 	b, err := os.ReadFile(privHexPath)
 	if err != nil {
 		return err
@@ -188,16 +269,16 @@ func (n *Node) LoadPrivateKey(privHexPath string) error {
 	if l := len(raw); l != ed25519.PrivateKeySize {
 		return fmt.Errorf("unexpected priv size %d", l)
 	}
-	n.PrivKey = ed25519.PrivateKey(raw)
-	n.PubKey = n.PrivKey.Public().(ed25519.PublicKey)
+	s.PrivKey = ed25519.PrivateKey(raw)
+	s.PubKey = s.PrivKey.Public().(ed25519.PublicKey)
 
-	fmt.Printf("[Node %d] Loaded PrivateKey (len=%d): %s\n", n.ID, len(n.PrivKey), hex.EncodeToString(n.PrivKey))
-	fmt.Printf("[Node %d] Loaded PublicKey  (len=%d): %s\n", n.ID, len(n.PubKey), hex.EncodeToString(n.PubKey))
+	fmt.Printf("[Node %d] Loaded PrivateKey (len=%d): %s\n", s.ID, len(s.PrivKey), hex.EncodeToString(s.PrivKey))
+	fmt.Printf("[Node %d] Loaded PublicKey  (len=%d): %s\n", s.ID, len(s.PubKey), hex.EncodeToString(s.PubKey))
 	return nil
 }
 
 // Load manifest with replica public keys (and addresses). Returns the address book.
-func (n *Node) LoadManifest(path string) (map[int32]string, error) {
+func (s *Node) LoadManifest(path string) (map[int32]string, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -215,7 +296,7 @@ func (n *Node) LoadManifest(path string) (map[int32]string, error) {
 		if len(pubBytes) != ed25519.PublicKeySize {
 			return nil, fmt.Errorf("bad pub len for id %d", r.ID)
 		}
-		n.PubKeysOfNodes[r.ID] = ed25519.PublicKey(pubBytes)
+		s.PubKeysOfNodes[r.ID] = ed25519.PublicKey(pubBytes)
 		addrs[r.ID] = r.Addr
 	}
 
@@ -227,38 +308,41 @@ func (n *Node) LoadManifest(path string) (map[int32]string, error) {
 		if len(pubBytes) != ed25519.PublicKeySize {
 			return nil, fmt.Errorf("bad pub len for id %d", c.Name)
 		}
-		if n.PubKeysOfClients == nil {
-			n.PubKeysOfClients = make(map[string]ed25519.PublicKey)
+		if s.PubKeysOfClients == nil {
+			s.PubKeysOfClients = make(map[string]ed25519.PublicKey)
 		}
-		n.PubKeysOfClients[c.Name] = ed25519.PublicKey(pubBytes)
+		s.PubKeysOfClients[c.Name] = ed25519.PublicKey(pubBytes)
 	}
 
 	return addrs, nil
 }
 
-func (n *Node) DigestBytes(data []byte) string { return mycrypto.DigestBytes(data) }
-func (n *Node) Sign(data []byte) []byte        { return mycrypto.Sign(n.PrivKey, data) }
-func (n *Node) VerifyReplicaSig(id int32, data, sig []byte) bool {
-	pub, ok := n.PubKeysOfNodes[id]
+func (s *Node) DigestBytes(data []byte) string { return mycrypto.DigestBytes(data) }
+func (s *Node) Sign(data []byte) []byte {
+	return mycrypto.Sign(s.PrivKey, data)
+}
+
+func (s *Node) VerifyReplicaSig(id int32, data, sig []byte) bool {
+	pub, ok := s.PubKeysOfNodes[id]
 	if !ok {
 		return false
 	}
 	return mycrypto.Verify(pub, data, sig)
 }
 
-func (n *Node) VerifyNodeSignatureBasedOnSequenceNumberAndDigest(ID int32, sequenceNumber int32, digest string, signature []byte) bool {
+func (s *Node) VerifyNodeSignatureBasedOnSequenceNumberAndDigest(ID int32, sequenceNumber int32, digest string, signature []byte) bool {
 	prepBytes := []byte(fmt.Sprintf("%d:%s", sequenceNumber, digest))
-	if ok := n.VerifyReplicaSig(ID, prepBytes, signature); !ok {
+	if ok := s.VerifyReplicaSig(ID, prepBytes, signature); !ok {
 		return false
 	}
 	return true
 }
 
-func (n *Node) VerifyClientSignatureBasedOnTransaction(clientID string, tx *pb.Transaction, signature []byte) bool {
+func (s *Node) VerifyClientSignatureBasedOnTransaction(clientID string, tx *pb.Transaction, signature []byte) bool {
 	if tx == nil {
 		return false
 	}
-	pub, ok := n.PubKeysOfClients[clientID]
+	pub, ok := s.PubKeysOfClients[clientID]
 	if !ok {
 		return false
 	}
@@ -273,5 +357,5 @@ func (n *Node) VerifyClientSignatureBasedOnTransaction(clientID string, tx *pb.T
 	return mycrypto.Verify(pub, msg, signature)
 }
 
-func (n *Node) Lock()   { n.mu.Lock() }
-func (n *Node) Unlock() { n.mu.Unlock() }
+func (s *Node) Lock()   { s.mu.Lock() }
+func (s *Node) Unlock() { s.mu.Unlock() }
