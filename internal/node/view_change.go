@@ -245,7 +245,7 @@ func (s *Node) getNextValidNewViewNumber() int32 {
 
 	for {
 		nextView++
-		nextLeader := nextView%int32(len(s.Peers)) + 1
+		nextLeader := ((nextView - 1) % int32(len(s.Peers))) + 1
 		isNextLeaderHavingCrashAttack, _ := HasAttack(nextLeader, common.CrashAttack, s.MaliciousPeers, s.Attacks)
 		isNextLeaderPresentInAlivePeers := checkIfNodeIsPresentInGivenPeers(s.AlivePeers, nextLeader)
 		if isNextLeaderPresentInAlivePeers && !isNextLeaderHavingCrashAttack {

@@ -152,7 +152,7 @@ func NewNode(id int32, address string, peers map[int32]string) *Node {
 	n := &Node{
 		ID:                            id,
 		Address:                       address,
-		ViewNumber:                    0,
+		ViewNumber:                    1,
 		SequenceNumber:                0,
 		PrivKey:                       priv,
 		PubKey:                        pub,
@@ -193,7 +193,7 @@ func (s *Node) ResetForNewSetAndUpdateNodeStatus(req *pb.FlushAndUpdateStatusReq
 	s.LastExecutedSequenceNumber = 0
 	s.ViewNumberToLastExecutedSequenceNumberMap = make(map[int32]int32)
 	s.SequenceNumber = 0
-	s.ViewNumber = 0
+	s.ViewNumber = 1
 	s.IsAlive = false
 	s.IsMalicious = false
 	s.Attacks = nil

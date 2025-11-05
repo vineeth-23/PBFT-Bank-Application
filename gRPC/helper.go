@@ -41,7 +41,7 @@ func GenerateBytesForSign(sequenceNumber int32, digest string) []byte {
 }
 
 func GetLeaderBasedOnViewNumber(viewNumber int32) int32 {
-	return (viewNumber % 7) + 1
+	return ((viewNumber - 1) % 7) + 1
 }
 
 func (s *NodeServer) executeInOrder() {
