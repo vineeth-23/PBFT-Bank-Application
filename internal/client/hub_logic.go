@@ -300,7 +300,7 @@ func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Tr
 			return nil, false
 		}
 		round++
-		log.Printf("🔁 Retrying transaction %d — next round=%d (backoff=%v)", tx.Time, round, retryBackoff)
+		//log.Printf("🔁 Retrying transaction %d — next round=%d (backoff=%v)", tx.Time, round, retryBackoff)
 		time.Sleep(retryBackoff)
 	}
 }

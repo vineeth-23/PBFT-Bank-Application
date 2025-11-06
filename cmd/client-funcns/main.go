@@ -99,7 +99,6 @@ func printDBForAllNodes(nodeAddrs map[int32]string) {
 	collected := []nodeData{}
 	allClients := map[string]bool{}
 
-	// Collect data from all nodes
 	for id, addr := range nodeAddrs {
 		node, conn, err := dialReplica(addr)
 		if err != nil {
@@ -126,14 +125,16 @@ func printDBForAllNodes(nodeAddrs map[int32]string) {
 		}
 	}
 
-	// Sort clients alphabetically
+	sort.Slice(collected, func(i, j int) bool {
+		return collected[i].id < collected[j].id
+	})
+
 	clients := make([]string, 0, len(allClients))
 	for cid := range allClients {
 		clients = append(clients, cid)
 	}
 	sort.Strings(clients)
 
-	// Determine width for formatting
 	maxClientLen := 8
 	for _, cid := range clients {
 		if len(cid) > maxClientLen {
@@ -141,7 +142,6 @@ func printDBForAllNodes(nodeAddrs map[int32]string) {
 		}
 	}
 
-	// Print Header
 	fmt.Println("\n================= Client Balances =================")
 	fmt.Printf("%-8s", "Node")
 	for _, cid := range clients {
@@ -155,7 +155,6 @@ func printDBForAllNodes(nodeAddrs map[int32]string) {
 	}
 	fmt.Println()
 
-	// Print Each Node Row
 	for _, data := range collected {
 		fmt.Printf("%-8s", fmt.Sprintf("n%d", data.id))
 		for _, cid := range clients {
