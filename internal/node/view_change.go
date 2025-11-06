@@ -43,15 +43,9 @@ func (s *Node) ResetNodeTimer() {
 func (s *Node) InitiateViewChange() {
 	s.Lock()
 
-	//if n.ViewChangeOngoing {
-	//	n.Unlock()
-	//	return
-	//}
-	//n.ViewChangeOngoing = true
-
 	newViewNumber := s.getNextValidNewViewNumber()
 	s.TriggeredViewChange[newViewNumber] = true
-	log.Printf("[Node %d] 🕐 Timer expired → Initiating VIEW CHANGE to view %d", s.ID, newViewNumber)
+	log.Printf("[Node %d] Timer expired → Initiating VIEW CHANGE to view %d", s.ID, newViewNumber)
 
 	var pm []*pb.PreparedProofSet
 	log.Printf("InitiateViewChange: Number of entries in logEntries I have is: %d", len(s.LogEntries))

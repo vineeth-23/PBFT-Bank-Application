@@ -2,6 +2,8 @@ package gRPC
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"pbft-bank-application/database"
@@ -16,8 +18,9 @@ import (
 )
 
 const (
-	F                  = 2
-	clientCallbackAddr = "localhost:7000"
+	F                     = 2
+	clientCallbackAddr    = "localhost:7000"
+	checkPointingInterval = 3
 )
 
 func generateBytesForDigest(tx *pb.Transaction) []byte {
@@ -77,6 +80,11 @@ func (s *NodeServer) executeInOrder() {
 			entry.Status = node.StatusExecuted
 			n.LastExecutedSequenceNumber = nextSeq
 			n.Unlock()
+			if n.LastExecutedSequenceNumber > 0 && n.LastExecutedSequenceNumber%checkPointingInterval == 0 {
+				start := n.LastExecutedSequenceNumber - 99
+				digest := s.ComputeCheckpointDigest(start, n.LastExecutedSequenceNumber)
+				go s.sendCheckpointMessage(n.LastExecutedSequenceNumber, digest)
+			}
 			continue
 		}
 
@@ -95,13 +103,13 @@ func (s *NodeServer) executeInOrder() {
 			if err := s.sendReplyToClient(clientID, cached); err != nil {
 				log.Printf("[Node %d] send cached reply to client %s failed: %v", s.Node.ID, clientID, err)
 			}
+			if n.LastExecutedSequenceNumber > 0 && n.LastExecutedSequenceNumber%checkPointingInterval == 0 {
+				start := n.LastExecutedSequenceNumber - 99
+				digest := s.ComputeCheckpointDigest(start, n.LastExecutedSequenceNumber)
+				go s.sendCheckpointMessage(n.LastExecutedSequenceNumber, digest)
+			}
 			continue
 		}
-
-		//if entry.Status != node.StatusCommitted {
-		//	n.Unlock()
-		//	return
-		//}
 
 		tx := &pb.Transaction{
 			FromClientId: entry.Transaction.FromClientID,
@@ -169,10 +177,14 @@ func (s *NodeServer) executeInOrder() {
 		if err := s.sendReplyToClient(clientID, reply); err != nil {
 			log.Printf("[Node %d] send reply to client %s failed: %v", s.Node.ID, clientID, err)
 		}
+		if n.LastExecutedSequenceNumber > 0 && n.LastExecutedSequenceNumber%checkPointingInterval == 0 {
+			start := n.LastExecutedSequenceNumber - 99
+			digest := s.ComputeCheckpointDigest(start, n.LastExecutedSequenceNumber)
+			go s.sendCheckpointMessage(n.LastExecutedSequenceNumber, digest)
+		}
 	}
 }
 
-// sendReplyToClient dials the client's callback server and pushes the reply.
 func (s *NodeServer) sendReplyToClient(clientID string, r *pb.ReplyToClientRequest) error {
 	addr := clientCallbackAddr
 
@@ -219,11 +231,11 @@ func IsNodePresentInAttackNodes(attackNodes []int32, nodeID int32) bool {
 }
 
 func quorumSizeForTriggeringViewChangeMessage() int {
-	return 3
+	return 3 // F+1
 }
 
 func isLeaderForNewView(nodeID int32, newView int32, totalPeers int32) bool {
-	if nodeID == ((newView)%totalPeers)+1 {
+	if nodeID == ((newView-1)%totalPeers)+1 {
 		return true
 	}
 	return false
@@ -248,4 +260,53 @@ func isValidStatusForCommitted(status node.Status) bool {
 		return true
 	}
 	return false
+}
+
+func (s *NodeServer) ComputeCheckpointDigest(start, end int32) string {
+	n := s.Node
+	digests := make([]string, 0, end-start+1)
+
+	for i := start; i <= end; i++ {
+		entry, ok := n.LogEntries[i]
+		if !ok || entry == nil || entry.Digest == "" {
+			continue
+		}
+		digests = append(digests, entry.Digest)
+	}
+
+	combined := strings.Join(digests, "|")
+	hash := sha256.Sum256([]byte(combined))
+	return hex.EncodeToString(hash[:])
+}
+
+func (s *NodeServer) sendCheckpointMessage(seq int32, digest string) {
+	n := s.Node
+	msg := &pb.CheckpointMessageRequest{
+		SequenceNumber: seq,
+		Digest:         digest,
+		ReplicaId:      n.ID,
+	}
+	bytes := crypto.GenerateBytesOnlyForNodeID(n.ID)
+	msg.Signature = s.Node.Sign(bytes)
+
+	for peerID, addr := range n.Peers {
+		go func(pid int32, addr string) {
+			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				log.Printf("[Node %d] ❌ Failed to dial peer n%d: %v", n.ID, pid, err)
+				return
+			}
+			defer conn.Close()
+
+			node := pb.NewPBFTReplicaClient(conn)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			n.AddMessageLog("CHECKPOINT", "sent", msg.GetSequenceNumber(), n.ID, pid, n.ViewNumber)
+			_, err = node.SendCheckPointMessage(ctx, msg)
+			if err != nil {
+				log.Printf("[Node %d] ❌ SendCheckpointMessage to n%d failed: %v", n.ID, pid, err)
+			}
+		}(peerID, addr)
+	}
 }

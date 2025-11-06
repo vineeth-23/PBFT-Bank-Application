@@ -582,11 +582,11 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 		return nil, status.Error(codes.Unavailable, "in-dark: simulated drop")
 	}
 
-	log.Printf("---------Log Entries till now for view:%d are:------------------", s.Node.ViewNumber)
-	for seqq_no, logEntry := range s.Node.LogEntries {
-		log.Printf("Seq_No: %d,  Seqq-No: %d, Status: %s, view: %d", logEntry.SequenceNumber, seqq_no, logEntry.Status, logEntry.ViewNumber)
-		//log.Printf("Seq_No: %d, Transaction: (%s->%s: %d (amnt: %d)), Status: %s, view: %d", logEntry.SequenceNumber, logEntry.Transaction.FromClientID, logEntry.Transaction.ToClientID, logEntry.Transaction.Time, logEntry.Transaction.Amount, logEntry.Status, logEntry.ViewNumber)
-	}
+	//log.Printf("---------Log Entries till now for view:%d are:------------------", s.Node.ViewNumber)
+	//for seqq_no, logEntry := range s.Node.LogEntries {
+	//	log.Printf("Seq_No: %d,  Seqq-No: %d, Status: %s, view: %d", logEntry.SequenceNumber, seqq_no, logEntry.Status, logEntry.ViewNumber)
+	//	//log.Printf("Seq_No: %d, Transaction: (%s->%s: %d (amnt: %d)), Status: %s, view: %d", logEntry.SequenceNumber, logEntry.Transaction.FromClientID, logEntry.Transaction.ToClientID, logEntry.Transaction.Time, logEntry.Transaction.Amount, logEntry.Status, logEntry.ViewNumber)
+	//}
 
 	n.AddMessageLog("PREPREPARED", "sent", resp.SequenceNumber, n.ID, req.ReplicaId, resp.ViewNumber)
 
@@ -1122,6 +1122,7 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 					n.Unlock()
 					continue
 				}
+
 				//d := existing.Digest
 				//if reply, exists := n.AlreadyExecutedTransactions[d]; exists && reply != nil {
 				//	//existing.ViewNumber = view
@@ -1133,8 +1134,8 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 
 			entry := &node.LogEntry{
 				Digest:         digest,
-				ViewNumber:     view,
 				SequenceNumber: seq,
+				ViewNumber:     view,
 				Status:         node.StatusCommitted,
 				PreparedProof:  make(map[int32][]*node.StatusProof),
 				CommittedProof: make(map[int32][]*node.StatusProof),
@@ -1155,6 +1156,59 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 	s.executeInOrder()
 
 	return &emptypb.Empty{}, nil
+}
+
+// -----------------------BONUS----------------------------------------
+
+func (s *NodeServer) SendCheckPointMessage(ctx context.Context, req *pb.CheckpointMessageRequest) (*pb.CheckpointMessageResponse, error) {
+	n := s.Node
+
+	if !n.VerifyReplicaSig(req.GetReplicaId(), crypto.GenerateBytesOnlyForNodeID(req.GetReplicaId()), req.Signature) {
+		log.Printf("[Node %d] 🚫 Invalid signature on Node from n%d", n.ID, req.GetReplicaId())
+		return nil, nil
+	}
+
+	n.Lock()
+	defer n.Unlock()
+
+	n.AddMessageLog("CHECKPOINT", "received", req.GetSequenceNumber(), req.GetReplicaId(), n.ID, n.ViewNumber)
+
+	seq := req.GetSequenceNumber()
+
+	if seq <= n.LastCheckpointedSequenceNumber {
+		log.Printf("[Node %d] 🔁 Checkpoint for seq=%d already completed", n.ID, seq)
+		return &pb.CheckpointMessageResponse{}, nil
+	}
+
+	if n.CheckpointProofs[seq] == nil {
+		n.CheckpointProofs[seq] = []*pb.CheckpointMessageRequest{}
+	}
+
+	for _, proof := range n.CheckpointProofs[seq] {
+		if proof.ReplicaId == req.ReplicaId {
+			return nil, nil
+		}
+	}
+
+	n.CheckpointProofs[seq] = append(n.CheckpointProofs[seq], req)
+	log.Printf("[Node %d] 🧾 Received checkpoint from n%d for seq=%d (%d total)",
+		n.ID, req.ReplicaId, seq, len(n.CheckpointProofs[seq]))
+
+	digestCounts := make(map[string]int)
+	for _, proof := range n.CheckpointProofs[seq] {
+		digestCounts[proof.Digest]++
+	}
+
+	for d, count := range digestCounts {
+		if count >= 2*F+1 {
+			n.LastCheckpointedSequenceNumber = seq
+			n.AddMessageLog("CHECKPOINTED_SEQ_NO", "updated", req.GetSequenceNumber(), n.ID, n.ID, n.ViewNumber)
+			log.Printf("[Node %d] ✅ CHECKPOINT COMPLETE for seq=%d with digest=%s", n.ID, seq, d)
+			break
+		}
+	}
+
+	return &pb.CheckpointMessageResponse{}, nil
 }
 
 //--------------------CLIENT FUNCNS-----------------------------
@@ -1288,11 +1342,6 @@ func (s *NodeServer) PrintView(ctx context.Context, req *pb.PrintViewRequest) (*
 func (s *NodeServer) PrintLog(ctx context.Context, req *pb.PrintLogRequest) (*pb.PrintLogResponse, error) {
 	n := s.Node
 
-	if !n.IsAlive {
-		log.Printf("[Node %d]  Cannot print logs: node not alive", n.ID)
-		return nil, status.Error(codes.Aborted, "Node is not alive")
-	}
-
 	n.Lock()
 	defer n.Unlock()
 
@@ -1316,9 +1365,70 @@ func (s *NodeServer) PrintLog(ctx context.Context, req *pb.PrintLogRequest) (*pb
 		})
 	}
 
-	log.Printf("[Node %d] Returning %d message log entries", n.ID, len(printEntries))
-
 	return &pb.PrintLogResponse{
 		PrintLogEntries: printEntries,
 	}, nil
+}
+
+func (s *NodeServer) PrintLogEntries(ctx context.Context, req *pb.PrintLogRequest) (*pb.PrintLogEntriesResponse, error) {
+	n := s.Node
+
+	n.Lock()
+	defer n.Unlock()
+
+	resp := &pb.PrintLogEntriesResponse{}
+
+	for _, entry := range n.LogEntries {
+		protoEntry := &pb.LogEntryMessage{
+			Digest:         entry.Digest,
+			ViewNumber:     entry.ViewNumber,
+			SequenceNumber: entry.SequenceNumber,
+			Status:         string(entry.Status),
+		}
+
+		if entry.Transaction != nil {
+			protoEntry.Transaction = &pb.Transaction{
+				FromClientId: entry.Transaction.FromClientID,
+				ToClientId:   entry.Transaction.ToClientID,
+				Amount:       entry.Transaction.Amount,
+				Time:         entry.Transaction.Time,
+			}
+		}
+
+		protoEntry.PreparedProof = make(map[int32]*pb.StatusProofList)
+		for replicaID, proofs := range entry.PreparedProof {
+			list := &pb.StatusProofList{}
+			for _, proof := range proofs {
+				list.Proofs = append(list.Proofs, &pb.StatusProof{
+					Digest:         proof.Digest,
+					Signature:      proof.Signature,
+					NodeId:         proof.NodeID,
+					View:           proof.View,
+					SequenceNumber: proof.SequenceNumber,
+					Status:         string(proof.Status),
+				})
+			}
+			protoEntry.PreparedProof[replicaID] = list
+		}
+
+		protoEntry.CommittedProof = make(map[int32]*pb.StatusProofList)
+		for replicaID, proofs := range entry.CommittedProof {
+			list := &pb.StatusProofList{}
+			for _, proof := range proofs {
+				list.Proofs = append(list.Proofs, &pb.StatusProof{
+					Digest:         proof.Digest,
+					Signature:      proof.Signature,
+					NodeId:         proof.NodeID,
+					View:           proof.View,
+					SequenceNumber: proof.SequenceNumber,
+					Status:         string(proof.Status),
+				})
+			}
+			protoEntry.CommittedProof[replicaID] = list
+		}
+
+		resp.LogEntries = append(resp.LogEntries, protoEntry)
+	}
+
+	return resp, nil
 }

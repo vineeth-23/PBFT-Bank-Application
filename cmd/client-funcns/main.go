@@ -90,6 +90,84 @@ func printDB(addr string, id int32) {
 	}
 }
 
+func printDBForAllNodes(nodeAddrs map[int32]string) {
+	type nodeData struct {
+		id       int32
+		balances map[string]int32
+	}
+
+	collected := []nodeData{}
+	allClients := map[string]bool{}
+
+	// Collect data from all nodes
+	for id, addr := range nodeAddrs {
+		node, conn, err := dialReplica(addr)
+		if err != nil {
+			log.Printf("[n%d] dial %s failed: %v", id, addr, err)
+			continue
+		}
+		ctx, cancel := timeoutCtx(2 * time.Second)
+		resp, err := node.PrintDB(ctx, &emptypb.Empty{})
+		cancel()
+		conn.Close()
+
+		if err != nil {
+			log.Printf("[n%d] PrintDB error: %v", id, err)
+			continue
+		}
+
+		collected = append(collected, nodeData{
+			id:       id,
+			balances: resp.Balances,
+		})
+
+		for cid := range resp.Balances {
+			allClients[cid] = true
+		}
+	}
+
+	// Sort clients alphabetically
+	clients := make([]string, 0, len(allClients))
+	for cid := range allClients {
+		clients = append(clients, cid)
+	}
+	sort.Strings(clients)
+
+	// Determine width for formatting
+	maxClientLen := 8
+	for _, cid := range clients {
+		if len(cid) > maxClientLen {
+			maxClientLen = len(cid)
+		}
+	}
+
+	// Print Header
+	fmt.Println("\n================= Client Balances =================")
+	fmt.Printf("%-8s", "Node")
+	for _, cid := range clients {
+		fmt.Printf(" | %-*s", maxClientLen, cid)
+	}
+	fmt.Println()
+
+	fmt.Printf("%s", strings.Repeat("-", 8))
+	for range clients {
+		fmt.Printf("-+-%s", strings.Repeat("-", maxClientLen))
+	}
+	fmt.Println()
+
+	// Print Each Node Row
+	for _, data := range collected {
+		fmt.Printf("%-8s", fmt.Sprintf("n%d", data.id))
+		for _, cid := range clients {
+			bal := data.balances[cid]
+			fmt.Printf(" | %-*d", maxClientLen, bal)
+		}
+		fmt.Println()
+	}
+
+	fmt.Println("==================================================")
+}
+
 func printStatus(addr string, id int32, seq int32) {
 	node, conn, err := dialReplica(addr)
 	if err != nil {
@@ -232,6 +310,68 @@ func printLog(addr string, id int32) {
 	fmt.Println("=====================================================================")
 }
 
+func printLogEntries(addr string, id int32) {
+	node, conn, err := dialReplica(addr)
+	if err != nil {
+		log.Printf("[n%d] dial %s failed: %v", id, addr, err)
+		return
+	}
+	defer conn.Close()
+
+	ctx, cancel := timeoutCtx(3 * time.Second)
+	defer cancel()
+
+	resp, err := node.PrintLogEntries(ctx, &pb.PrintLogRequest{NodeId: id})
+	if err != nil {
+		log.Printf("[n%d] PrintLogEntries error: %v", id, err)
+		return
+	}
+
+	fmt.Printf("\n===================  Log Entries — Node n%d @ %s ===================\n", id, addr)
+
+	if len(resp.GetLogEntries()) == 0 {
+		fmt.Println("No log entries recorded.")
+		fmt.Println("=====================================================================")
+		return
+	}
+
+	sort.Slice(resp.LogEntries, func(i, j int) bool {
+		if resp.LogEntries[i].SequenceNumber == resp.LogEntries[j].SequenceNumber {
+			return resp.LogEntries[i].ViewNumber < resp.LogEntries[j].ViewNumber
+		}
+		return resp.LogEntries[i].SequenceNumber < resp.LogEntries[j].SequenceNumber
+	})
+
+	for _, e := range resp.LogEntries {
+		if e.SequenceNumber == -1 && e.ViewNumber == -1 {
+			continue
+		}
+
+		// Start line: Seq + View + Status + Digest
+		fmt.Printf("Seq: %-3d | View: %-3d | Status: %-10s | Digest: %s",
+			e.SequenceNumber,
+			e.ViewNumber,
+			e.Status,
+			e.Digest,
+		)
+
+		// Append transaction on the SAME line
+		if e.Transaction != nil && e.Transaction.FromClientId != "" {
+			fmt.Printf(" | Txn: %s → %s | Amount=%d | Time=%d",
+				e.Transaction.FromClientId,
+				e.Transaction.ToClientId,
+				e.Transaction.Amount,
+				e.Transaction.Time,
+			)
+		}
+
+		fmt.Println() // end of entry line
+		fmt.Println() // blank line between entries
+	}
+
+	fmt.Println("=====================================================================")
+}
+
 func main() {
 	mode := flag.String("mode", "db", "mode to run (db | status | view)")
 	node := flag.Int("node", 0, "node id to query; 0 = all")
@@ -246,14 +386,7 @@ func main() {
 	switch *mode {
 	case "db":
 		if *node == 0 {
-			ids := make([]int32, 0, len(addrs))
-			for id := range addrs {
-				ids = append(ids, id)
-			}
-			sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
-			for _, id := range ids {
-				printDB(addrs[id], id)
-			}
+			printDBForAllNodes(addrs)
 		} else {
 			id := int32(*node)
 			addr, ok := addrs[id]
@@ -320,6 +453,24 @@ func main() {
 				log.Fatalf("node %d not found in manifest", id)
 			}
 			printLog(addr, id)
+		}
+	case "log-entries":
+		if *node == 0 {
+			ids := make([]int32, 0, len(addrs))
+			for id := range addrs {
+				ids = append(ids, id)
+			}
+			sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+			for _, id := range ids {
+				printLogEntries(addrs[id], id)
+			}
+		} else {
+			id := int32(*node)
+			addr, ok := addrs[id]
+			if !ok {
+				log.Fatalf("node %d not found in manifest", id)
+			}
+			printLogEntries(addr, id)
 		}
 	default:
 		log.Fatalf("unsupported mode: %s", *mode)

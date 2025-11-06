@@ -28,10 +28,12 @@ const (
 	PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_FullMethodName = "/pb.PBFTReplica/FlushPreviousDataAndUpdatePeersStatus"
 	PBFTReplica_SendViewChange_FullMethodName                        = "/pb.PBFTReplica/SendViewChange"
 	PBFTReplica_SendNewView_FullMethodName                           = "/pb.PBFTReplica/SendNewView"
+	PBFTReplica_SendCheckPointMessage_FullMethodName                 = "/pb.PBFTReplica/SendCheckPointMessage"
 	PBFTReplica_PrintDB_FullMethodName                               = "/pb.PBFTReplica/PrintDB"
 	PBFTReplica_PrintStatus_FullMethodName                           = "/pb.PBFTReplica/PrintStatus"
 	PBFTReplica_PrintView_FullMethodName                             = "/pb.PBFTReplica/PrintView"
 	PBFTReplica_PrintLog_FullMethodName                              = "/pb.PBFTReplica/PrintLog"
+	PBFTReplica_PrintLogEntries_FullMethodName                       = "/pb.PBFTReplica/PrintLogEntries"
 )
 
 // PBFTReplicaClient is the client API for PBFTReplica service.
@@ -47,11 +49,14 @@ type PBFTReplicaClient interface {
 	// View Change/New View RPCs:
 	SendViewChange(ctx context.Context, in *ViewChangeMessage, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SendNewView(ctx context.Context, in *NewViewMessage, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Checkpoint
+	SendCheckPointMessage(ctx context.Context, in *CheckpointMessageRequest, opts ...grpc.CallOption) (*CheckpointMessageResponse, error)
 	// Client funcns
 	PrintDB(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PrintDBResponse, error)
 	PrintStatus(ctx context.Context, in *PrintStatusRequest, opts ...grpc.CallOption) (*PrintStatusResponse, error)
 	PrintView(ctx context.Context, in *PrintViewRequest, opts ...grpc.CallOption) (*PrintViewResponse, error)
 	PrintLog(ctx context.Context, in *PrintLogRequest, opts ...grpc.CallOption) (*PrintLogResponse, error)
+	PrintLogEntries(ctx context.Context, in *PrintLogRequest, opts ...grpc.CallOption) (*PrintLogEntriesResponse, error)
 }
 
 type pBFTReplicaClient struct {
@@ -142,6 +147,16 @@ func (c *pBFTReplicaClient) SendNewView(ctx context.Context, in *NewViewMessage,
 	return out, nil
 }
 
+func (c *pBFTReplicaClient) SendCheckPointMessage(ctx context.Context, in *CheckpointMessageRequest, opts ...grpc.CallOption) (*CheckpointMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckpointMessageResponse)
+	err := c.cc.Invoke(ctx, PBFTReplica_SendCheckPointMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *pBFTReplicaClient) PrintDB(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PrintDBResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PrintDBResponse)
@@ -182,6 +197,16 @@ func (c *pBFTReplicaClient) PrintLog(ctx context.Context, in *PrintLogRequest, o
 	return out, nil
 }
 
+func (c *pBFTReplicaClient) PrintLogEntries(ctx context.Context, in *PrintLogRequest, opts ...grpc.CallOption) (*PrintLogEntriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PrintLogEntriesResponse)
+	err := c.cc.Invoke(ctx, PBFTReplica_PrintLogEntries_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PBFTReplicaServer is the server API for PBFTReplica service.
 // All implementations must embed UnimplementedPBFTReplicaServer
 // for forward compatibility.
@@ -195,11 +220,14 @@ type PBFTReplicaServer interface {
 	// View Change/New View RPCs:
 	SendViewChange(context.Context, *ViewChangeMessage) (*emptypb.Empty, error)
 	SendNewView(context.Context, *NewViewMessage) (*emptypb.Empty, error)
+	// Checkpoint
+	SendCheckPointMessage(context.Context, *CheckpointMessageRequest) (*CheckpointMessageResponse, error)
 	// Client funcns
 	PrintDB(context.Context, *emptypb.Empty) (*PrintDBResponse, error)
 	PrintStatus(context.Context, *PrintStatusRequest) (*PrintStatusResponse, error)
 	PrintView(context.Context, *PrintViewRequest) (*PrintViewResponse, error)
 	PrintLog(context.Context, *PrintLogRequest) (*PrintLogResponse, error)
+	PrintLogEntries(context.Context, *PrintLogRequest) (*PrintLogEntriesResponse, error)
 	mustEmbedUnimplementedPBFTReplicaServer()
 }
 
@@ -234,6 +262,9 @@ func (UnimplementedPBFTReplicaServer) SendViewChange(context.Context, *ViewChang
 func (UnimplementedPBFTReplicaServer) SendNewView(context.Context, *NewViewMessage) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendNewView not implemented")
 }
+func (UnimplementedPBFTReplicaServer) SendCheckPointMessage(context.Context, *CheckpointMessageRequest) (*CheckpointMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendCheckPointMessage not implemented")
+}
 func (UnimplementedPBFTReplicaServer) PrintDB(context.Context, *emptypb.Empty) (*PrintDBResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PrintDB not implemented")
 }
@@ -245,6 +276,9 @@ func (UnimplementedPBFTReplicaServer) PrintView(context.Context, *PrintViewReque
 }
 func (UnimplementedPBFTReplicaServer) PrintLog(context.Context, *PrintLogRequest) (*PrintLogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PrintLog not implemented")
+}
+func (UnimplementedPBFTReplicaServer) PrintLogEntries(context.Context, *PrintLogRequest) (*PrintLogEntriesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PrintLogEntries not implemented")
 }
 func (UnimplementedPBFTReplicaServer) mustEmbedUnimplementedPBFTReplicaServer() {}
 func (UnimplementedPBFTReplicaServer) testEmbeddedByValue()                     {}
@@ -411,6 +445,24 @@ func _PBFTReplica_SendNewView_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PBFTReplica_SendCheckPointMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckpointMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).SendCheckPointMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_SendCheckPointMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).SendCheckPointMessage(ctx, req.(*CheckpointMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PBFTReplica_PrintDB_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -483,6 +535,24 @@ func _PBFTReplica_PrintLog_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PBFTReplica_PrintLogEntries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrintLogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).PrintLogEntries(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_PrintLogEntries_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).PrintLogEntries(ctx, req.(*PrintLogRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PBFTReplica_ServiceDesc is the grpc.ServiceDesc for PBFTReplica service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -523,6 +593,10 @@ var PBFTReplica_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PBFTReplica_SendNewView_Handler,
 		},
 		{
+			MethodName: "SendCheckPointMessage",
+			Handler:    _PBFTReplica_SendCheckPointMessage_Handler,
+		},
+		{
 			MethodName: "PrintDB",
 			Handler:    _PBFTReplica_PrintDB_Handler,
 		},
@@ -537,6 +611,10 @@ var PBFTReplica_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PrintLog",
 			Handler:    _PBFTReplica_PrintLog_Handler,
+		},
+		{
+			MethodName: "PrintLogEntries",
+			Handler:    _PBFTReplica_PrintLogEntries_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

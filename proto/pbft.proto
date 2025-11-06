@@ -188,6 +188,35 @@ message PrintLogResponse {
   repeated PrintLogEntry print_log_entries = 1;
 }
 
+message StatusProofList {
+  repeated StatusProof proofs = 1;
+}
+
+message LogEntryMessage {
+  string digest = 1;
+  int32 view_number = 2;
+  int32 sequence_number = 3;
+  string status = 4;
+  Transaction transaction = 5;
+  map<int32, StatusProofList> prepared_proof = 6;
+  map<int32, StatusProofList> committed_proof = 7;
+}
+
+message PrintLogEntriesResponse {
+  repeated LogEntryMessage log_entries = 1;
+}
+
+message CheckpointMessageRequest {
+  int32 sequence_number = 1;
+  string digest = 2;
+  int32 replica_id = 3;
+  bytes signature = 4;
+}
+
+message CheckpointMessageResponse {
+
+}
+
 service PBFTReplica {
   rpc SendRequestToLeader     (ClientRequestMessage)     returns (ReplyToClientRequest);
   rpc SendPrePrepare  (PrePrepareMessageRequest)  returns (PrePrepareMessageResponse);
@@ -200,11 +229,15 @@ service PBFTReplica {
   rpc SendViewChange (ViewChangeMessage) returns (google.protobuf.Empty);
   rpc SendNewView (NewViewMessage) returns (google.protobuf.Empty);
 
+  //Checkpoint
+  rpc SendCheckPointMessage(CheckpointMessageRequest) returns (CheckpointMessageResponse);
+
   // Client funcns
   rpc PrintDB                 (google.protobuf.Empty)     returns (PrintDBResponse);
   rpc PrintStatus (PrintStatusRequest) returns (PrintStatusResponse);
   rpc PrintView (PrintViewRequest) returns (PrintViewResponse);
   rpc PrintLog(PrintLogRequest) returns (PrintLogResponse);
+  rpc PrintLogEntries(PrintLogRequest) returns (PrintLogEntriesResponse);
 }
 
 service ClientCallback {
