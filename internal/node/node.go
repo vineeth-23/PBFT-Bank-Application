@@ -94,6 +94,7 @@ type MessageLogEntry struct {
 	ToNodeID    int32
 	Direction   string
 	ViewNumber  int32
+	Timestamp   time.Time
 }
 
 type LogKey struct {
@@ -254,6 +255,7 @@ func (n *Node) AddMessageLog(messageType string, direction string, seqNum, fromI
 		ToNodeID:    toID,
 		Direction:   direction,
 		ViewNumber:  viewNum,
+		Timestamp:   time.Now(),
 	}
 	n.AllMessagesForPrintingLog = append(n.AllMessagesForPrintingLog, entry)
 }

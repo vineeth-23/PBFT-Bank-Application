@@ -3,12 +3,14 @@ package gRPC
 import (
 	"context"
 	"fmt"
+	//"google.golang.org/protobuf/types/known/timestamppb"
 	"log"
 	"net"
 	"pbft-bank-application/common"
 	"pbft-bank-application/internal/crypto"
 	"pbft-bank-application/internal/node"
 	pb "pbft-bank-application/pbft-bank-application/proto"
+
 	"sort"
 	"sync"
 	"time"
@@ -18,6 +20,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type NodeServer struct {
@@ -104,18 +107,18 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		leaderAddr, ok := s.Node.Peers[currentLeaderID]
 		if !ok {
 			n.Unlock()
-			log.Printf("[Node %d] ⚠️ Leader for view=%d is n%d but address unknown",
+			log.Printf("[Node %d] Leader for view=%d is n%d but address unknown",
 				s.Node.ID, n.ViewNumber, currentLeaderID)
 			return nil, status.Error(codes.FailedPrecondition, "leader unknown")
 		}
 		n.Unlock()
 
-		log.Printf("[Node %d] ↪️ Forwarding t=%d (digest=%s) to leader n%d @ %s",
+		log.Printf("[Node %d] Forwarding t=%d (digest=%s) to leader n%d @ %s",
 			s.Node.ID, tx.GetTime(), digest[:8], currentLeaderID, leaderAddr)
 
 		conn, err := grpc.Dial(leaderAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			log.Printf("[Node %d] ❌ dial leader n%d failed: %v", s.Node.ID, currentLeaderID, err)
+			log.Printf("[Node %d] dial leader n%d failed: %v", s.Node.ID, currentLeaderID, err)
 			return nil, status.Error(codes.Unavailable, "leader unreachable")
 		}
 		defer conn.Close()
@@ -125,7 +128,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		defer cancel()
 		respFromLeader, err2 := leader.SendRequestToLeader(cctx, req)
 		if err2 != nil {
-			log.Printf("[Node %d] ❌ forward to leader n%d failed: %v", s.Node.ID, currentLeaderID, err2)
+			log.Printf("[Node %d] forward to leader n%d failed: %v", s.Node.ID, currentLeaderID, err2)
 			return nil, err2
 		}
 		return respFromLeader, nil
@@ -432,7 +435,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				defer wg.Done()
 				conn, err := grpc.Dial(peerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 				if err != nil {
-					log.Printf("[Leader %d] ❌ SendCommit dial %s failed: %v", s.Node.ID, peerAddr, err)
+					log.Printf("[Leader %d] SendCommit dial %s failed: %v", s.Node.ID, peerAddr, err)
 					return
 				}
 				defer conn.Close()
@@ -442,7 +445,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				defer cancel()
 				n.AddMessageLog("COMMIT", "send", commitReq.GetSequenceNumber(), n.ID, peerID, n.ViewNumber)
 				if _, err := replica.SendCommit(cctx, commitReq); err != nil {
-					log.Printf("[Leader %d] ❌ SendCommit->n%d error: %v", s.Node.ID, peerID, err)
+					log.Printf("[Leader %d] SendCommit->n%d error: %v", s.Node.ID, peerID, err)
 					return
 				}
 			}(pid, addr)
@@ -1058,7 +1061,7 @@ func (s *NodeServer) SendViewChange(ctx context.Context, msg *pb.ViewChangeMessa
 	if len(msgs) >= quorumSizeForTriggeringNewViewMsg && isNodeLeaderForNewView {
 		log.Printf("[Node %d] 🚀 Quorum (2f+1=%d) view-change messages for v=%d reached and I am new primary → initiating NEW-VIEW",
 			n.ID, len(msgs), msg.NewViewNumber)
-		err := n.InitiateNewView(msg.NewViewNumber, msgs)
+		err := n.InitiateNewView(ctx, msg.NewViewNumber, msgs)
 		if err != nil {
 			return nil, err
 		}
@@ -1100,32 +1103,25 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 	n.AddMessageLog("NEW-VIEW", "received", -1, msg.GetSourceId(), s.Node.ID, msg.GetNewViewNumber())
 
 	if !n.VerifyReplicaSig(msg.SourceId, crypto.GenerateBytesOnlyForNodeID(msg.SourceId), msg.Signature) {
-		log.Printf("[Node %d] 🚫 Invalid signature on NEW-VIEW from n%d", n.ID, msg.SourceId)
+		log.Printf("[Node %d] Invalid signature on NEW-VIEW from n%d", n.ID, msg.SourceId)
 		return &emptypb.Empty{}, nil
 	}
 
 	if msg.NewViewNumber <= n.ViewNumber {
-		log.Printf("[Node %d] ⏮️ Ignoring NEW-VIEW with view=%d <= current=%d", n.ID, msg.NewViewNumber, n.ViewNumber)
+		log.Printf("[Node %d]  Ignoring NEW-VIEW with view=%d <= current=%d", n.ID, msg.NewViewNumber, n.ViewNumber)
 		return &emptypb.Empty{}, nil
 	}
 
 	s.performActionsAfterNewViewIsRecievied(msg.NewViewNumber)
-	log.Printf("[Node %d] ✅ Accepted NEW-VIEW v=%d from n%d", n.ID, msg.NewViewNumber, msg.SourceId)
+	log.Printf("[Node %d] Accepted NEW-VIEW v=%d from n%d", n.ID, msg.NewViewNumber, msg.SourceId)
 
 	n.Lock()
 	n.AllNewViewMessagesForPrinting[msg.GetNewViewNumber()] = msg
 
-	//for _, entry := range s.Node.LogEntries {
-	//	if entry.Status == node.StatusPrePrepared {
-	//		entry.Transaction = nil
-	//		entry.Digest = node.NullDigest
-	//	}
-	//}
 	n.Unlock()
 
 	if len(msg.PrePrepares) == 0 {
 		for _, entry := range s.Node.LogEntries {
-			//entry.Transaction = nil
 			entry.Digest = node.NullDigest
 		}
 	} else {
@@ -1139,20 +1135,12 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 
 			if existing, ok := n.LogEntries[pre.SequenceNumber]; ok && existing != nil {
 				if existing.Status == node.StatusExecuted {
-					if isCheckPointingEnabled && existing.SequenceNumber > s.Node.LastCheckpointedSequenceNumber {
+					if !(isCheckPointingEnabled && existing.SequenceNumber > s.Node.LastCheckpointedSequenceNumber) {
 						existing.ViewNumber = view
 					}
 					n.Unlock()
 					continue
 				}
-
-				//d := existing.Digest
-				//if reply, exists := n.AlreadyExecutedTransactions[d]; exists && reply != nil {
-				//	//existing.ViewNumber = view
-				//	n.Unlock()
-				//	log.Printf("[Node %d] 🔁 Skipping NEW-VIEW seq=%d: already executed", n.ID, seq)
-				//	continue
-				//}
 			}
 
 			entry := &node.LogEntry{
@@ -1374,6 +1362,9 @@ func (s *NodeServer) PrintLog(ctx context.Context, req *pb.PrintLogRequest) (*pb
 			PrintLogEntries: []*pb.PrintLogEntry{},
 		}, nil
 	}
+	sort.Slice(n.AllMessagesForPrintingLog, func(i, j int) bool {
+		return n.AllMessagesForPrintingLog[i].Timestamp.Before(n.AllMessagesForPrintingLog[j].Timestamp)
+	})
 
 	printEntries := make([]*pb.PrintLogEntry, 0, len(n.AllMessagesForPrintingLog))
 
@@ -1385,6 +1376,7 @@ func (s *NodeServer) PrintLog(ctx context.Context, req *pb.PrintLogRequest) (*pb
 			ToNodeId:    logEntry.ToNodeID,
 			Direction:   logEntry.Direction,
 			ViewNumber:  logEntry.ViewNumber,
+			Timestamp:   timestamppb.New(logEntry.Timestamp),
 		})
 	}
 

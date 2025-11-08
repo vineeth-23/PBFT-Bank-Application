@@ -10,6 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -1622,6 +1623,7 @@ type PrintLogEntry struct {
 	ToNodeId      int32                  `protobuf:"varint,4,opt,name=to_node_id,json=toNodeId,proto3" json:"to_node_id,omitempty"`
 	Direction     string                 `protobuf:"bytes,5,opt,name=direction,proto3" json:"direction,omitempty"`
 	ViewNumber    int32                  `protobuf:"varint,6,opt,name=view_number,json=viewNumber,proto3" json:"view_number,omitempty"`
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1696,6 +1698,13 @@ func (x *PrintLogEntry) GetViewNumber() int32 {
 		return x.ViewNumber
 	}
 	return 0
+}
+
+func (x *PrintLogEntry) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
 }
 
 type CheckPointMessageProof struct {
@@ -2090,7 +2099,7 @@ var File_proto_pbft_proto protoreflect.FileDescriptor
 
 const file_proto_pbft_proto_rawDesc = "" +
 	"\n" +
-	"\x10proto/pbft.proto\x12\x02pb\x1a\x1bgoogle/protobuf/empty.proto\"\x81\x01\n" +
+	"\x10proto/pbft.proto\x12\x02pb\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x81\x01\n" +
 	"\vTransaction\x12$\n" +
 	"\x0efrom_client_id\x18\x01 \x01(\tR\ffromClientId\x12 \n" +
 	"\fto_client_id\x18\x02 \x01(\tR\n" +
@@ -2229,7 +2238,7 @@ const file_proto_pbft_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12(\n" +
 	"\x05value\x18\x02 \x01(\v2\x12.pb.NewViewMessageR\x05value:\x028\x01\"*\n" +
 	"\x0fPrintLogRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\x05R\x06nodeId\"\xd4\x01\n" +
+	"\anode_id\x18\x01 \x01(\x05R\x06nodeId\"\x8e\x02\n" +
 	"\rPrintLogEntry\x12!\n" +
 	"\fmessage_type\x18\x01 \x01(\tR\vmessageType\x12!\n" +
 	"\fsequence_num\x18\x02 \x01(\x05R\vsequenceNum\x12 \n" +
@@ -2239,7 +2248,8 @@ const file_proto_pbft_proto_rawDesc = "" +
 	"to_node_id\x18\x04 \x01(\x05R\btoNodeId\x12\x1c\n" +
 	"\tdirection\x18\x05 \x01(\tR\tdirection\x12\x1f\n" +
 	"\vview_number\x18\x06 \x01(\x05R\n" +
-	"viewNumber\"v\n" +
+	"viewNumber\x128\n" +
+	"\ttimestamp\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"v\n" +
 	"\x16CheckPointMessageProof\x12\\\n" +
 	"\x1bcheckpoint_message_requests\x18\x01 \x03(\v2\x1c.pb.CheckpointMessageRequestR\x19checkpointMessageRequests\"Q\n" +
 	"\x10PrintLogResponse\x12=\n" +
@@ -2346,7 +2356,8 @@ var file_proto_pbft_proto_goTypes = []any{
 	nil,                                 // 34: pb.LogEntryMessage.PreparedProofEntry
 	nil,                                 // 35: pb.LogEntryMessage.CommittedProofEntry
 	nil,                                 // 36: pb.PrintLogEntriesResponse.CheckPointMessageProofsEntry
-	(*emptypb.Empty)(nil),               // 37: google.protobuf.Empty
+	(*timestamppb.Timestamp)(nil),       // 37: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 38: google.protobuf.Empty
 }
 var file_proto_pbft_proto_depIdxs = []int32{
 	0,  // 0: pb.PrePrepareMessageRequest.transaction:type_name -> pb.Transaction
@@ -2362,53 +2373,54 @@ var file_proto_pbft_proto_depIdxs = []int32{
 	15, // 10: pb.NewViewMessage.view_changes:type_name -> pb.ViewChangeMessage
 	0,  // 11: pb.PrintStatusResponse.transaction:type_name -> pb.Transaction
 	33, // 12: pb.PrintViewResponse.newViewNumberToNewViewMessageMap:type_name -> pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry
-	30, // 13: pb.CheckPointMessageProof.checkpoint_message_requests:type_name -> pb.CheckpointMessageRequest
-	24, // 14: pb.PrintLogResponse.print_log_entries:type_name -> pb.PrintLogEntry
-	17, // 15: pb.StatusProofList.proofs:type_name -> pb.StatusProof
-	0,  // 16: pb.LogEntryMessage.transaction:type_name -> pb.Transaction
-	34, // 17: pb.LogEntryMessage.prepared_proof:type_name -> pb.LogEntryMessage.PreparedProofEntry
-	35, // 18: pb.LogEntryMessage.committed_proof:type_name -> pb.LogEntryMessage.CommittedProofEntry
-	28, // 19: pb.PrintLogEntriesResponse.log_entries:type_name -> pb.LogEntryMessage
-	36, // 20: pb.PrintLogEntriesResponse.checkPointMessageProofs:type_name -> pb.PrintLogEntriesResponse.CheckPointMessageProofsEntry
-	18, // 21: pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry.value:type_name -> pb.NewViewMessage
-	27, // 22: pb.LogEntryMessage.PreparedProofEntry.value:type_name -> pb.StatusProofList
-	27, // 23: pb.LogEntryMessage.CommittedProofEntry.value:type_name -> pb.StatusProofList
-	25, // 24: pb.PrintLogEntriesResponse.CheckPointMessageProofsEntry.value:type_name -> pb.CheckPointMessageProof
-	7,  // 25: pb.PBFTReplica.SendRequestToLeader:input_type -> pb.ClientRequestMessage
-	1,  // 26: pb.PBFTReplica.SendPrePrepare:input_type -> pb.PrePrepareMessageRequest
-	3,  // 27: pb.PBFTReplica.SendPrepare:input_type -> pb.PrepareMessageRequest
-	5,  // 28: pb.PBFTReplica.SendCommit:input_type -> pb.CommitMessageRequest
-	10, // 29: pb.PBFTReplica.ReadClientBalance:input_type -> pb.ReadClientBalanceRequest
-	14, // 30: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:input_type -> pb.FlushAndUpdateStatusRequest
-	15, // 31: pb.PBFTReplica.SendViewChange:input_type -> pb.ViewChangeMessage
-	18, // 32: pb.PBFTReplica.SendNewView:input_type -> pb.NewViewMessage
-	30, // 33: pb.PBFTReplica.SendCheckPointMessage:input_type -> pb.CheckpointMessageRequest
-	37, // 34: pb.PBFTReplica.PrintDB:input_type -> google.protobuf.Empty
-	19, // 35: pb.PBFTReplica.PrintStatus:input_type -> pb.PrintStatusRequest
-	21, // 36: pb.PBFTReplica.PrintView:input_type -> pb.PrintViewRequest
-	23, // 37: pb.PBFTReplica.PrintLog:input_type -> pb.PrintLogRequest
-	23, // 38: pb.PBFTReplica.PrintLogEntries:input_type -> pb.PrintLogRequest
-	8,  // 39: pb.ClientCallback.ReplyToClientFromNode:input_type -> pb.ReplyToClientRequest
-	8,  // 40: pb.PBFTReplica.SendRequestToLeader:output_type -> pb.ReplyToClientRequest
-	2,  // 41: pb.PBFTReplica.SendPrePrepare:output_type -> pb.PrePrepareMessageResponse
-	4,  // 42: pb.PBFTReplica.SendPrepare:output_type -> pb.PrepareMessageResponse
-	6,  // 43: pb.PBFTReplica.SendCommit:output_type -> pb.CommitMessageResponse
-	11, // 44: pb.PBFTReplica.ReadClientBalance:output_type -> pb.ReadClientBalanceResponse
-	37, // 45: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:output_type -> google.protobuf.Empty
-	37, // 46: pb.PBFTReplica.SendViewChange:output_type -> google.protobuf.Empty
-	37, // 47: pb.PBFTReplica.SendNewView:output_type -> google.protobuf.Empty
-	31, // 48: pb.PBFTReplica.SendCheckPointMessage:output_type -> pb.CheckpointMessageResponse
-	12, // 49: pb.PBFTReplica.PrintDB:output_type -> pb.PrintDBResponse
-	20, // 50: pb.PBFTReplica.PrintStatus:output_type -> pb.PrintStatusResponse
-	22, // 51: pb.PBFTReplica.PrintView:output_type -> pb.PrintViewResponse
-	26, // 52: pb.PBFTReplica.PrintLog:output_type -> pb.PrintLogResponse
-	29, // 53: pb.PBFTReplica.PrintLogEntries:output_type -> pb.PrintLogEntriesResponse
-	9,  // 54: pb.ClientCallback.ReplyToClientFromNode:output_type -> pb.Ack
-	40, // [40:55] is the sub-list for method output_type
-	25, // [25:40] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	37, // 13: pb.PrintLogEntry.timestamp:type_name -> google.protobuf.Timestamp
+	30, // 14: pb.CheckPointMessageProof.checkpoint_message_requests:type_name -> pb.CheckpointMessageRequest
+	24, // 15: pb.PrintLogResponse.print_log_entries:type_name -> pb.PrintLogEntry
+	17, // 16: pb.StatusProofList.proofs:type_name -> pb.StatusProof
+	0,  // 17: pb.LogEntryMessage.transaction:type_name -> pb.Transaction
+	34, // 18: pb.LogEntryMessage.prepared_proof:type_name -> pb.LogEntryMessage.PreparedProofEntry
+	35, // 19: pb.LogEntryMessage.committed_proof:type_name -> pb.LogEntryMessage.CommittedProofEntry
+	28, // 20: pb.PrintLogEntriesResponse.log_entries:type_name -> pb.LogEntryMessage
+	36, // 21: pb.PrintLogEntriesResponse.checkPointMessageProofs:type_name -> pb.PrintLogEntriesResponse.CheckPointMessageProofsEntry
+	18, // 22: pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry.value:type_name -> pb.NewViewMessage
+	27, // 23: pb.LogEntryMessage.PreparedProofEntry.value:type_name -> pb.StatusProofList
+	27, // 24: pb.LogEntryMessage.CommittedProofEntry.value:type_name -> pb.StatusProofList
+	25, // 25: pb.PrintLogEntriesResponse.CheckPointMessageProofsEntry.value:type_name -> pb.CheckPointMessageProof
+	7,  // 26: pb.PBFTReplica.SendRequestToLeader:input_type -> pb.ClientRequestMessage
+	1,  // 27: pb.PBFTReplica.SendPrePrepare:input_type -> pb.PrePrepareMessageRequest
+	3,  // 28: pb.PBFTReplica.SendPrepare:input_type -> pb.PrepareMessageRequest
+	5,  // 29: pb.PBFTReplica.SendCommit:input_type -> pb.CommitMessageRequest
+	10, // 30: pb.PBFTReplica.ReadClientBalance:input_type -> pb.ReadClientBalanceRequest
+	14, // 31: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:input_type -> pb.FlushAndUpdateStatusRequest
+	15, // 32: pb.PBFTReplica.SendViewChange:input_type -> pb.ViewChangeMessage
+	18, // 33: pb.PBFTReplica.SendNewView:input_type -> pb.NewViewMessage
+	30, // 34: pb.PBFTReplica.SendCheckPointMessage:input_type -> pb.CheckpointMessageRequest
+	38, // 35: pb.PBFTReplica.PrintDB:input_type -> google.protobuf.Empty
+	19, // 36: pb.PBFTReplica.PrintStatus:input_type -> pb.PrintStatusRequest
+	21, // 37: pb.PBFTReplica.PrintView:input_type -> pb.PrintViewRequest
+	23, // 38: pb.PBFTReplica.PrintLog:input_type -> pb.PrintLogRequest
+	23, // 39: pb.PBFTReplica.PrintLogEntries:input_type -> pb.PrintLogRequest
+	8,  // 40: pb.ClientCallback.ReplyToClientFromNode:input_type -> pb.ReplyToClientRequest
+	8,  // 41: pb.PBFTReplica.SendRequestToLeader:output_type -> pb.ReplyToClientRequest
+	2,  // 42: pb.PBFTReplica.SendPrePrepare:output_type -> pb.PrePrepareMessageResponse
+	4,  // 43: pb.PBFTReplica.SendPrepare:output_type -> pb.PrepareMessageResponse
+	6,  // 44: pb.PBFTReplica.SendCommit:output_type -> pb.CommitMessageResponse
+	11, // 45: pb.PBFTReplica.ReadClientBalance:output_type -> pb.ReadClientBalanceResponse
+	38, // 46: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:output_type -> google.protobuf.Empty
+	38, // 47: pb.PBFTReplica.SendViewChange:output_type -> google.protobuf.Empty
+	38, // 48: pb.PBFTReplica.SendNewView:output_type -> google.protobuf.Empty
+	31, // 49: pb.PBFTReplica.SendCheckPointMessage:output_type -> pb.CheckpointMessageResponse
+	12, // 50: pb.PBFTReplica.PrintDB:output_type -> pb.PrintDBResponse
+	20, // 51: pb.PBFTReplica.PrintStatus:output_type -> pb.PrintStatusResponse
+	22, // 52: pb.PBFTReplica.PrintView:output_type -> pb.PrintViewResponse
+	26, // 53: pb.PBFTReplica.PrintLog:output_type -> pb.PrintLogResponse
+	29, // 54: pb.PBFTReplica.PrintLogEntries:output_type -> pb.PrintLogEntriesResponse
+	9,  // 55: pb.ClientCallback.ReplyToClientFromNode:output_type -> pb.Ack
+	41, // [41:56] is the sub-list for method output_type
+	26, // [26:41] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_proto_pbft_proto_init() }

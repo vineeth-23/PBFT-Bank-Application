@@ -275,10 +275,9 @@ func printLog(addr string, id int32) {
 	}
 
 	sort.Slice(resp.PrintLogEntries, func(i, j int) bool {
-		if resp.PrintLogEntries[i].SequenceNum == resp.PrintLogEntries[j].SequenceNum {
-			return resp.PrintLogEntries[i].ViewNumber < resp.PrintLogEntries[j].ViewNumber
-		}
-		return resp.PrintLogEntries[i].SequenceNum < resp.PrintLogEntries[j].SequenceNum
+		ti := resp.PrintLogEntries[i].Timestamp.AsTime()
+		tj := resp.PrintLogEntries[j].Timestamp.AsTime()
+		return ti.Before(tj)
 	})
 
 	for _, entry := range resp.PrintLogEntries {
@@ -287,7 +286,9 @@ func printLog(addr string, id int32) {
 			continue
 		}
 
-		fmt.Printf("Type: %-12s", entry.MessageType)
+		ts := entry.Timestamp.AsTime().Format("15:04:05.000")
+
+		fmt.Printf("[%s] Type: %-12s", ts, entry.MessageType)
 
 		if entry.Direction != "" {
 			fmt.Printf(" | Dir: %-8s", entry.Direction)
@@ -304,6 +305,7 @@ func printLog(addr string, id int32) {
 		if entry.ToNodeId != -1 {
 			fmt.Printf(" | To: n%-2d", entry.ToNodeId)
 		}
+
 		fmt.Println()
 	}
 	fmt.Println("=====================================================================")

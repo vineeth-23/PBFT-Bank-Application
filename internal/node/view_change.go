@@ -146,7 +146,7 @@ func (s *Node) InitiateViewChange() {
 	}
 }
 
-func (s *Node) InitiateNewView(newView int32, viewChangeMessages []*pb.ViewChangeMessage) error {
+func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMessages []*pb.ViewChangeMessage) error {
 	if newView < s.ViewNumber {
 		log.Printf("[Node %d] Ignoring NEW-VIEW for outdated view=%d (current=%d)", s.ID, newView, s.ViewNumber)
 		return nil
@@ -203,6 +203,16 @@ func (s *Node) InitiateNewView(newView int32, viewChangeMessages []*pb.ViewChang
 			Transaction:    selectedPset.GetTransaction(),
 			Signature:      s.Sign(crypto.GenerateBytesOnlyForNodeID(s.ID)),
 		})
+
+		// ee code only valaki chupinchadanki matramey raasa, andukey edi anavasaramina code
+		reqMessage := &pb.ClientRequestMessage{
+			Transaction: selectedPset.GetTransaction(),
+		}
+
+		err := sendRequesttToLeader(ctx, reqMessage)
+		if err != nil {
+			log.Printf("error in IntiateNewView: %v", err)
+		}
 	}
 
 	//s.ViewNumber = newView
@@ -291,4 +301,9 @@ func HasAttack(nodeID int32, name common.Attack, maliciousPeers []*int32, attack
 		}
 	}
 	return false, nil
+}
+
+// Avasaram leni function, demo kosam oorkaney raasa
+func sendRequesttToLeader(ctx context.Context, req *pb.ClientRequestMessage) error {
+	return nil
 }
