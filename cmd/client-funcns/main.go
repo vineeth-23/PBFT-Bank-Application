@@ -228,20 +228,20 @@ func printView(addr string, id int32) {
 		msg := resp.NewViewNumberToNewViewMessageMap[view]
 		fmt.Printf("\n🔹 NewViewMessage(view=%d)\n", msg.NewViewNumber)
 		//fmt.Printf("   ├── Signature: %x\n", msg.Signature)
-		fmt.Printf("   ├── #PrePrepares: %d\n", len(msg.PrePrepares))
-		fmt.Printf("   ├── #ViewChanges: %d\n", len(msg.ViewChanges))
+		fmt.Printf("   ├── #Number of PrePrepares: %d\n", len(msg.PrePrepares))
+		fmt.Printf("   ├── #Number of ViewChanges Recievied: %d\n", len(msg.ViewChanges))
 
 		if len(msg.PrePrepares) > 0 {
 			fmt.Println("   ├── PrePrepareMessages:")
 			for _, p := range msg.PrePrepares {
-				fmt.Printf("   │   ↪ Seq=%d, View=%d, Transaction=(%s->%s (%d) Amnt: %d), Digest=%s\n",
-					p.SequenceNumber, p.ViewNumber, p.GetTransaction().GetFromClientId(), p.GetTransaction().ToClientId, p.GetTransaction().GetTime(), p.GetTransaction().GetAmount(), p.Digest)
+				fmt.Printf("   │   ↪ Seq=%d, View=%d, Transaction=%v, Digest=%s\n",
+					p.SequenceNumber, p.ViewNumber, p.GetTransaction(), p.Digest)
 			}
 		}
 		if len(msg.ViewChanges) > 0 {
 			fmt.Println("   ├── ViewChangeMessages:")
 			for _, v := range msg.ViewChanges {
-				fmt.Printf("   │   ↪ FromNode=%d, NewView=%d, PreparedProofSets=%d\n",
+				fmt.Printf("   │   ↪ FromNode=%d, NewView=%d, NumberOfAtleastPreparedTransactions=%d\n",
 					v.NodeId, v.NewViewNumber, len(v.PreparedProofSet))
 			}
 		}
@@ -346,7 +346,6 @@ func printLogEntries(addr string, id int32) {
 			continue
 		}
 
-		// Start line: Seq + View + Status + Digest
 		fmt.Printf("Seq: %-3d | View: %-3d | Status: %-10s | Digest: %s",
 			e.SequenceNumber,
 			e.ViewNumber,
@@ -354,7 +353,6 @@ func printLogEntries(addr string, id int32) {
 			e.Digest,
 		)
 
-		// Append transaction on the SAME line
 		if e.Transaction != nil && e.Transaction.FromClientId != "" {
 			fmt.Printf(" | Txn: %s → %s | Amount=%d | Time=%d",
 				e.Transaction.FromClientId,
@@ -364,8 +362,35 @@ func printLogEntries(addr string, id int32) {
 			)
 		}
 
-		fmt.Println() // end of entry line
-		fmt.Println() // blank line between entries
+		fmt.Println()
+	}
+	fmt.Printf("LastCheckpointedSeqNumber: %d\n", resp.LastCheckpointedSequenceNumber)
+
+	if len(resp.GetCheckPointMessageProofs()) > 0 {
+		fmt.Println("CheckpointProofs:")
+
+		seqs := make([]int, 0, len(resp.CheckPointMessageProofs))
+		for seq := range resp.CheckPointMessageProofs {
+			seqs = append(seqs, int(seq))
+		}
+		sort.Ints(seqs)
+
+		for _, seq := range seqs {
+			proof := resp.CheckPointMessageProofs[int32(seq)]
+
+			fmt.Printf("   Sequence %d:\n", seq)
+
+			sort.Slice(proof.CheckpointMessageRequests, func(i, j int) bool {
+				return proof.CheckpointMessageRequests[i].ReplicaId < proof.CheckpointMessageRequests[j].ReplicaId
+			})
+
+			for _, req := range proof.CheckpointMessageRequests {
+				fmt.Printf("         Replica=%d | Digest=%s\n",
+					req.ReplicaId,
+					req.Digest,
+				)
+			}
+		}
 	}
 
 	fmt.Println("=====================================================================")

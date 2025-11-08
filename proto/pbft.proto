@@ -184,6 +184,10 @@ message PrintLogEntry {
   int32 view_number  =6;
 }
 
+message CheckPointMessageProof {
+  repeated CheckpointMessageRequest checkpoint_message_requests = 1;
+}
+
 message PrintLogResponse {
   repeated PrintLogEntry print_log_entries = 1;
 }
@@ -204,6 +208,8 @@ message LogEntryMessage {
 
 message PrintLogEntriesResponse {
   repeated LogEntryMessage log_entries = 1;
+  int32 last_checkpointed_sequence_number = 2;
+  map<int32, CheckPointMessageProof> checkPointMessageProofs = 3;
 }
 
 message CheckpointMessageRequest {

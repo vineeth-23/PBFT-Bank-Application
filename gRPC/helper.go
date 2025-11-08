@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	F                     = 2
-	clientCallbackAddr    = "localhost:7000"
-	checkPointingInterval = 3
+	F                      = 2
+	clientCallbackAddr     = "localhost:7000"
+	checkPointingInterval  = 3
+	isCheckPointingEnabled = false
 )
 
 func generateBytesForDigest(tx *pb.Transaction) []byte {
@@ -55,15 +56,6 @@ func (s *NodeServer) executeInOrder() {
 		nextSeq := n.LastExecutedSequenceNumber + 1
 		entry, ok := n.LogEntries[nextSeq]
 
-		//if ok && entry != nil && entry.Digest == node.NullDigest {
-		//	log.Printf("executeInOrder: sequence number is %d and updated to executed", nextSeq)
-		//	entry.ViewNumber = s.Node.ViewNumber
-		//	entry.Status = node.StatusExecuted
-		//	n.LastExecutedSequenceNumber = nextSeq
-		//	n.Unlock()
-		//	continue
-		//}
-
 		if !ok || entry == nil {
 			n.Unlock()
 			return
@@ -80,6 +72,7 @@ func (s *NodeServer) executeInOrder() {
 			entry.Status = node.StatusExecuted
 			n.LastExecutedSequenceNumber = nextSeq
 			n.Unlock()
+			s.UpdateNodeTimer()
 			if n.LastExecutedSequenceNumber > 0 && n.LastExecutedSequenceNumber%checkPointingInterval == 0 {
 				start := n.LastExecutedSequenceNumber - 99
 				digest := s.ComputeCheckpointDigest(start, n.LastExecutedSequenceNumber)
@@ -100,6 +93,7 @@ func (s *NodeServer) executeInOrder() {
 			}
 			n.LastExecutedSequenceNumber = nextSeq
 			n.Unlock()
+			s.UpdateNodeTimer()
 			if err := s.sendReplyToClient(clientID, cached); err != nil {
 				log.Printf("[Node %d] send cached reply to client %s failed: %v", s.Node.ID, clientID, err)
 			}
@@ -128,6 +122,7 @@ func (s *NodeServer) executeInOrder() {
 		if cached, exists := n.AlreadyExecutedTransactions[entry.Digest]; exists && cached != nil {
 			n.LastExecutedSequenceNumber = nextSeq
 			n.Unlock()
+			s.UpdateNodeTimer()
 			if err := s.sendReplyToClient(clientID, cached); err != nil {
 				log.Printf("[Node %d] send cached reply to client %s failed: %v", s.Node.ID, clientID, err)
 			}
@@ -168,10 +163,13 @@ func (s *NodeServer) executeInOrder() {
 		//}
 
 		n.AlreadyExecutedTransactions[entry.Digest] = reply
+		log.Printf("Updated the executedTransaction for transaction: %v, digest is: %s", entry.Transaction, entry.Digest)
 		n.Unlock()
 
 		log.Printf("[Node %d] ✅ EXECUTED t=%d: %s → %s (amt=%d) result=%t",
 			n.ID, tx.Time, tx.FromClientId, tx.ToClientId, tx.Amount, result)
+		s.UpdateNodeTimer()
+
 		n.AddMessageLog("EXECUTED", "sent", entry.SequenceNumber, n.ID, n.ID, n.ViewNumber)
 
 		if err := s.sendReplyToClient(clientID, reply); err != nil {
@@ -182,6 +180,35 @@ func (s *NodeServer) executeInOrder() {
 			digest := s.ComputeCheckpointDigest(start, n.LastExecutedSequenceNumber)
 			go s.sendCheckpointMessage(n.LastExecutedSequenceNumber, digest)
 		}
+	}
+}
+
+func (s *NodeServer) UpdateNodeTimer() {
+	s.Node.Lock()
+	isTransactionProcessing := false
+	for _, entry := range s.Node.LogEntries {
+		if entry == nil || entry.Digest == node.NullDigest {
+			continue
+		}
+		_, ok := s.Node.AlreadyExecutedTransactions[entry.Digest]
+		if entry.Status != node.StatusExecuted && !ok {
+			if entry.Transaction != nil {
+				log.Printf("UpdateNodeTimer: Transaction is: %v; Digest is: %s", entry.Transaction, entry.Digest)
+			} else {
+				log.Printf("UpdateNodeTimer: Transaction is: nil and marking isTransactionProcessing")
+			}
+			isTransactionProcessing = true
+			break
+		}
+	}
+	if !isTransactionProcessing {
+		log.Printf("Stop node timer in view-%d as all transactions are executed", s.Node.ViewNumber)
+		s.Node.Unlock()
+		s.Node.StopNodeTimer()
+	} else {
+		log.Printf("Resetting node timer in UpdateNodeTimer")
+		s.Node.Unlock()
+		s.Node.ResetNodeTimer()
 	}
 }
 
@@ -309,4 +336,14 @@ func (s *NodeServer) sendCheckpointMessage(seq int32, digest string) {
 			}
 		}(peerID, addr)
 	}
+}
+
+func toProtoCheckpointProofs(src map[int32][]*pb.CheckpointMessageRequest) map[int32]*pb.CheckPointMessageProof {
+	dst := make(map[int32]*pb.CheckPointMessageProof)
+	for view, reqList := range src {
+		dst[view] = &pb.CheckPointMessageProof{
+			CheckpointMessageRequests: reqList,
+		}
+	}
+	return dst
 }

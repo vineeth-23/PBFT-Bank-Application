@@ -25,12 +25,13 @@ func (s *Node) ResetNodeTimer() {
 		s.electionTimer.Stop()
 		s.electionTimer = nil
 	}
-	s.Unlock()
 
 	// +rand.Intn(600)
-	timeout := 4000 * time.Millisecond
+	timeout := 10000 * time.Millisecond
 
 	s.electionTimer = time.AfterFunc(timeout, func() {
+		//s.Lock()
+		//defer s.Unlock()
 		newViewNumber := s.getNextValidNewViewNumber()
 		if s.TriggeredViewChange[newViewNumber] {
 			return
@@ -38,10 +39,28 @@ func (s *Node) ResetNodeTimer() {
 		s.TriggeredViewChange[newViewNumber] = true
 		s.InitiateViewChange()
 	})
+	s.Unlock()
+}
+
+func (s *Node) StopNodeTimer() {
+	log.Printf("Stopping node timer")
+	s.Lock()
+	if s.electionTimer != nil {
+		s.electionTimer.Stop()
+		s.electionTimer = nil
+	}
+	s.Unlock()
 }
 
 func (s *Node) InitiateViewChange() {
 	s.Lock()
+
+	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
+	if isCrashAttack {
+		s.Unlock()
+		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for InitiateViewChange", s.ID)
+		return
+	}
 
 	newViewNumber := s.getNextValidNewViewNumber()
 	s.TriggeredViewChange[newViewNumber] = true
@@ -186,8 +205,8 @@ func (s *Node) InitiateNewView(newView int32, viewChangeMessages []*pb.ViewChang
 		})
 	}
 
-	s.ViewNumber = newView
-	log.Printf("[Node %d] ✅ Entered new view v=%d with max sequence=%d", s.ID, s.ViewNumber, maxSeq)
+	//s.ViewNumber = newView
+	log.Printf("[Node %d] ✅ Intiating new view v=%d with max sequence=%d", s.ID, s.ViewNumber, maxSeq)
 
 	newViewMsg := &pb.NewViewMessage{
 		NewViewNumber: newView,

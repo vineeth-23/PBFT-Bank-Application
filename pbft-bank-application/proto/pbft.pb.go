@@ -1698,6 +1698,50 @@ func (x *PrintLogEntry) GetViewNumber() int32 {
 	return 0
 }
 
+type CheckPointMessageProof struct {
+	state                     protoimpl.MessageState      `protogen:"open.v1"`
+	CheckpointMessageRequests []*CheckpointMessageRequest `protobuf:"bytes,1,rep,name=checkpoint_message_requests,json=checkpointMessageRequests,proto3" json:"checkpoint_message_requests,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *CheckPointMessageProof) Reset() {
+	*x = CheckPointMessageProof{}
+	mi := &file_proto_pbft_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckPointMessageProof) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckPointMessageProof) ProtoMessage() {}
+
+func (x *CheckPointMessageProof) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_pbft_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckPointMessageProof.ProtoReflect.Descriptor instead.
+func (*CheckPointMessageProof) Descriptor() ([]byte, []int) {
+	return file_proto_pbft_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *CheckPointMessageProof) GetCheckpointMessageRequests() []*CheckpointMessageRequest {
+	if x != nil {
+		return x.CheckpointMessageRequests
+	}
+	return nil
+}
+
 type PrintLogResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	PrintLogEntries []*PrintLogEntry       `protobuf:"bytes,1,rep,name=print_log_entries,json=printLogEntries,proto3" json:"print_log_entries,omitempty"`
@@ -1707,7 +1751,7 @@ type PrintLogResponse struct {
 
 func (x *PrintLogResponse) Reset() {
 	*x = PrintLogResponse{}
-	mi := &file_proto_pbft_proto_msgTypes[25]
+	mi := &file_proto_pbft_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1719,7 +1763,7 @@ func (x *PrintLogResponse) String() string {
 func (*PrintLogResponse) ProtoMessage() {}
 
 func (x *PrintLogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_pbft_proto_msgTypes[25]
+	mi := &file_proto_pbft_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1732,7 +1776,7 @@ func (x *PrintLogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrintLogResponse.ProtoReflect.Descriptor instead.
 func (*PrintLogResponse) Descriptor() ([]byte, []int) {
-	return file_proto_pbft_proto_rawDescGZIP(), []int{25}
+	return file_proto_pbft_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *PrintLogResponse) GetPrintLogEntries() []*PrintLogEntry {
@@ -1751,7 +1795,7 @@ type StatusProofList struct {
 
 func (x *StatusProofList) Reset() {
 	*x = StatusProofList{}
-	mi := &file_proto_pbft_proto_msgTypes[26]
+	mi := &file_proto_pbft_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1763,7 +1807,7 @@ func (x *StatusProofList) String() string {
 func (*StatusProofList) ProtoMessage() {}
 
 func (x *StatusProofList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_pbft_proto_msgTypes[26]
+	mi := &file_proto_pbft_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1776,7 +1820,7 @@ func (x *StatusProofList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusProofList.ProtoReflect.Descriptor instead.
 func (*StatusProofList) Descriptor() ([]byte, []int) {
-	return file_proto_pbft_proto_rawDescGZIP(), []int{26}
+	return file_proto_pbft_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *StatusProofList) GetProofs() []*StatusProof {
@@ -1801,7 +1845,7 @@ type LogEntryMessage struct {
 
 func (x *LogEntryMessage) Reset() {
 	*x = LogEntryMessage{}
-	mi := &file_proto_pbft_proto_msgTypes[27]
+	mi := &file_proto_pbft_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1813,7 +1857,7 @@ func (x *LogEntryMessage) String() string {
 func (*LogEntryMessage) ProtoMessage() {}
 
 func (x *LogEntryMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_pbft_proto_msgTypes[27]
+	mi := &file_proto_pbft_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1826,7 +1870,7 @@ func (x *LogEntryMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogEntryMessage.ProtoReflect.Descriptor instead.
 func (*LogEntryMessage) Descriptor() ([]byte, []int) {
-	return file_proto_pbft_proto_rawDescGZIP(), []int{27}
+	return file_proto_pbft_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *LogEntryMessage) GetDigest() string {
@@ -1879,15 +1923,17 @@ func (x *LogEntryMessage) GetCommittedProof() map[int32]*StatusProofList {
 }
 
 type PrintLogEntriesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	LogEntries    []*LogEntryMessage     `protobuf:"bytes,1,rep,name=log_entries,json=logEntries,proto3" json:"log_entries,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                          protoimpl.MessageState            `protogen:"open.v1"`
+	LogEntries                     []*LogEntryMessage                `protobuf:"bytes,1,rep,name=log_entries,json=logEntries,proto3" json:"log_entries,omitempty"`
+	LastCheckpointedSequenceNumber int32                             `protobuf:"varint,2,opt,name=last_checkpointed_sequence_number,json=lastCheckpointedSequenceNumber,proto3" json:"last_checkpointed_sequence_number,omitempty"`
+	CheckPointMessageProofs        map[int32]*CheckPointMessageProof `protobuf:"bytes,3,rep,name=checkPointMessageProofs,proto3" json:"checkPointMessageProofs,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *PrintLogEntriesResponse) Reset() {
 	*x = PrintLogEntriesResponse{}
-	mi := &file_proto_pbft_proto_msgTypes[28]
+	mi := &file_proto_pbft_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1899,7 +1945,7 @@ func (x *PrintLogEntriesResponse) String() string {
 func (*PrintLogEntriesResponse) ProtoMessage() {}
 
 func (x *PrintLogEntriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_pbft_proto_msgTypes[28]
+	mi := &file_proto_pbft_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1912,12 +1958,26 @@ func (x *PrintLogEntriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrintLogEntriesResponse.ProtoReflect.Descriptor instead.
 func (*PrintLogEntriesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_pbft_proto_rawDescGZIP(), []int{28}
+	return file_proto_pbft_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *PrintLogEntriesResponse) GetLogEntries() []*LogEntryMessage {
 	if x != nil {
 		return x.LogEntries
+	}
+	return nil
+}
+
+func (x *PrintLogEntriesResponse) GetLastCheckpointedSequenceNumber() int32 {
+	if x != nil {
+		return x.LastCheckpointedSequenceNumber
+	}
+	return 0
+}
+
+func (x *PrintLogEntriesResponse) GetCheckPointMessageProofs() map[int32]*CheckPointMessageProof {
+	if x != nil {
+		return x.CheckPointMessageProofs
 	}
 	return nil
 }
@@ -1934,7 +1994,7 @@ type CheckpointMessageRequest struct {
 
 func (x *CheckpointMessageRequest) Reset() {
 	*x = CheckpointMessageRequest{}
-	mi := &file_proto_pbft_proto_msgTypes[29]
+	mi := &file_proto_pbft_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1946,7 +2006,7 @@ func (x *CheckpointMessageRequest) String() string {
 func (*CheckpointMessageRequest) ProtoMessage() {}
 
 func (x *CheckpointMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_pbft_proto_msgTypes[29]
+	mi := &file_proto_pbft_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1959,7 +2019,7 @@ func (x *CheckpointMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckpointMessageRequest.ProtoReflect.Descriptor instead.
 func (*CheckpointMessageRequest) Descriptor() ([]byte, []int) {
-	return file_proto_pbft_proto_rawDescGZIP(), []int{29}
+	return file_proto_pbft_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *CheckpointMessageRequest) GetSequenceNumber() int32 {
@@ -1998,7 +2058,7 @@ type CheckpointMessageResponse struct {
 
 func (x *CheckpointMessageResponse) Reset() {
 	*x = CheckpointMessageResponse{}
-	mi := &file_proto_pbft_proto_msgTypes[30]
+	mi := &file_proto_pbft_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2010,7 +2070,7 @@ func (x *CheckpointMessageResponse) String() string {
 func (*CheckpointMessageResponse) ProtoMessage() {}
 
 func (x *CheckpointMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_pbft_proto_msgTypes[30]
+	mi := &file_proto_pbft_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2023,7 +2083,7 @@ func (x *CheckpointMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckpointMessageResponse.ProtoReflect.Descriptor instead.
 func (*CheckpointMessageResponse) Descriptor() ([]byte, []int) {
-	return file_proto_pbft_proto_rawDescGZIP(), []int{30}
+	return file_proto_pbft_proto_rawDescGZIP(), []int{31}
 }
 
 var File_proto_pbft_proto protoreflect.FileDescriptor
@@ -2179,7 +2239,9 @@ const file_proto_pbft_proto_rawDesc = "" +
 	"to_node_id\x18\x04 \x01(\x05R\btoNodeId\x12\x1c\n" +
 	"\tdirection\x18\x05 \x01(\tR\tdirection\x12\x1f\n" +
 	"\vview_number\x18\x06 \x01(\x05R\n" +
-	"viewNumber\"Q\n" +
+	"viewNumber\"v\n" +
+	"\x16CheckPointMessageProof\x12\\\n" +
+	"\x1bcheckpoint_message_requests\x18\x01 \x03(\v2\x1c.pb.CheckpointMessageRequestR\x19checkpointMessageRequests\"Q\n" +
 	"\x10PrintLogResponse\x12=\n" +
 	"\x11print_log_entries\x18\x01 \x03(\v2\x11.pb.PrintLogEntryR\x0fprintLogEntries\":\n" +
 	"\x0fStatusProofList\x12'\n" +
@@ -2198,10 +2260,15 @@ const file_proto_pbft_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v2\x13.pb.StatusProofListR\x05value:\x028\x01\x1aV\n" +
 	"\x13CommittedProofEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12)\n" +
-	"\x05value\x18\x02 \x01(\v2\x13.pb.StatusProofListR\x05value:\x028\x01\"O\n" +
+	"\x05value\x18\x02 \x01(\v2\x13.pb.StatusProofListR\x05value:\x028\x01\"\xf6\x02\n" +
 	"\x17PrintLogEntriesResponse\x124\n" +
 	"\vlog_entries\x18\x01 \x03(\v2\x13.pb.LogEntryMessageR\n" +
-	"logEntries\"\x98\x01\n" +
+	"logEntries\x12I\n" +
+	"!last_checkpointed_sequence_number\x18\x02 \x01(\x05R\x1elastCheckpointedSequenceNumber\x12r\n" +
+	"\x17checkPointMessageProofs\x18\x03 \x03(\v28.pb.PrintLogEntriesResponse.CheckPointMessageProofsEntryR\x17checkPointMessageProofs\x1af\n" +
+	"\x1cCheckPointMessageProofsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x120\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.pb.CheckPointMessageProofR\x05value:\x028\x01\"\x98\x01\n" +
 	"\x18CheckpointMessageRequest\x12'\n" +
 	"\x0fsequence_number\x18\x01 \x01(\x05R\x0esequenceNumber\x12\x16\n" +
 	"\x06digest\x18\x02 \x01(\tR\x06digest\x12\x1d\n" +
@@ -2240,7 +2307,7 @@ func file_proto_pbft_proto_rawDescGZIP() []byte {
 	return file_proto_pbft_proto_rawDescData
 }
 
-var file_proto_pbft_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_proto_pbft_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_proto_pbft_proto_goTypes = []any{
 	(*Transaction)(nil),                 // 0: pb.Transaction
 	(*PrePrepareMessageRequest)(nil),    // 1: pb.PrePrepareMessageRequest
@@ -2267,24 +2334,26 @@ var file_proto_pbft_proto_goTypes = []any{
 	(*PrintViewResponse)(nil),           // 22: pb.PrintViewResponse
 	(*PrintLogRequest)(nil),             // 23: pb.PrintLogRequest
 	(*PrintLogEntry)(nil),               // 24: pb.PrintLogEntry
-	(*PrintLogResponse)(nil),            // 25: pb.PrintLogResponse
-	(*StatusProofList)(nil),             // 26: pb.StatusProofList
-	(*LogEntryMessage)(nil),             // 27: pb.LogEntryMessage
-	(*PrintLogEntriesResponse)(nil),     // 28: pb.PrintLogEntriesResponse
-	(*CheckpointMessageRequest)(nil),    // 29: pb.CheckpointMessageRequest
-	(*CheckpointMessageResponse)(nil),   // 30: pb.CheckpointMessageResponse
-	nil,                                 // 31: pb.PrintDBResponse.BalancesEntry
-	nil,                                 // 32: pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry
-	nil,                                 // 33: pb.LogEntryMessage.PreparedProofEntry
-	nil,                                 // 34: pb.LogEntryMessage.CommittedProofEntry
-	(*emptypb.Empty)(nil),               // 35: google.protobuf.Empty
+	(*CheckPointMessageProof)(nil),      // 25: pb.CheckPointMessageProof
+	(*PrintLogResponse)(nil),            // 26: pb.PrintLogResponse
+	(*StatusProofList)(nil),             // 27: pb.StatusProofList
+	(*LogEntryMessage)(nil),             // 28: pb.LogEntryMessage
+	(*PrintLogEntriesResponse)(nil),     // 29: pb.PrintLogEntriesResponse
+	(*CheckpointMessageRequest)(nil),    // 30: pb.CheckpointMessageRequest
+	(*CheckpointMessageResponse)(nil),   // 31: pb.CheckpointMessageResponse
+	nil,                                 // 32: pb.PrintDBResponse.BalancesEntry
+	nil,                                 // 33: pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry
+	nil,                                 // 34: pb.LogEntryMessage.PreparedProofEntry
+	nil,                                 // 35: pb.LogEntryMessage.CommittedProofEntry
+	nil,                                 // 36: pb.PrintLogEntriesResponse.CheckPointMessageProofsEntry
+	(*emptypb.Empty)(nil),               // 37: google.protobuf.Empty
 }
 var file_proto_pbft_proto_depIdxs = []int32{
 	0,  // 0: pb.PrePrepareMessageRequest.transaction:type_name -> pb.Transaction
 	2,  // 1: pb.PrepareMessageRequest.pre_prepared_message_response:type_name -> pb.PrePrepareMessageResponse
 	4,  // 2: pb.CommitMessageRequest.prepared_message_response:type_name -> pb.PrepareMessageResponse
 	0,  // 3: pb.ClientRequestMessage.transaction:type_name -> pb.Transaction
-	31, // 4: pb.PrintDBResponse.balances:type_name -> pb.PrintDBResponse.BalancesEntry
+	32, // 4: pb.PrintDBResponse.balances:type_name -> pb.PrintDBResponse.BalancesEntry
 	13, // 5: pb.FlushAndUpdateStatusRequest.attacks:type_name -> pb.Attack
 	16, // 6: pb.ViewChangeMessage.prepared_proof_set:type_name -> pb.PreparedProofSet
 	17, // 7: pb.PreparedProofSet.proofs:type_name -> pb.StatusProof
@@ -2292,51 +2361,54 @@ var file_proto_pbft_proto_depIdxs = []int32{
 	1,  // 9: pb.NewViewMessage.pre_prepares:type_name -> pb.PrePrepareMessageRequest
 	15, // 10: pb.NewViewMessage.view_changes:type_name -> pb.ViewChangeMessage
 	0,  // 11: pb.PrintStatusResponse.transaction:type_name -> pb.Transaction
-	32, // 12: pb.PrintViewResponse.newViewNumberToNewViewMessageMap:type_name -> pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry
-	24, // 13: pb.PrintLogResponse.print_log_entries:type_name -> pb.PrintLogEntry
-	17, // 14: pb.StatusProofList.proofs:type_name -> pb.StatusProof
-	0,  // 15: pb.LogEntryMessage.transaction:type_name -> pb.Transaction
-	33, // 16: pb.LogEntryMessage.prepared_proof:type_name -> pb.LogEntryMessage.PreparedProofEntry
-	34, // 17: pb.LogEntryMessage.committed_proof:type_name -> pb.LogEntryMessage.CommittedProofEntry
-	27, // 18: pb.PrintLogEntriesResponse.log_entries:type_name -> pb.LogEntryMessage
-	18, // 19: pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry.value:type_name -> pb.NewViewMessage
-	26, // 20: pb.LogEntryMessage.PreparedProofEntry.value:type_name -> pb.StatusProofList
-	26, // 21: pb.LogEntryMessage.CommittedProofEntry.value:type_name -> pb.StatusProofList
-	7,  // 22: pb.PBFTReplica.SendRequestToLeader:input_type -> pb.ClientRequestMessage
-	1,  // 23: pb.PBFTReplica.SendPrePrepare:input_type -> pb.PrePrepareMessageRequest
-	3,  // 24: pb.PBFTReplica.SendPrepare:input_type -> pb.PrepareMessageRequest
-	5,  // 25: pb.PBFTReplica.SendCommit:input_type -> pb.CommitMessageRequest
-	10, // 26: pb.PBFTReplica.ReadClientBalance:input_type -> pb.ReadClientBalanceRequest
-	14, // 27: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:input_type -> pb.FlushAndUpdateStatusRequest
-	15, // 28: pb.PBFTReplica.SendViewChange:input_type -> pb.ViewChangeMessage
-	18, // 29: pb.PBFTReplica.SendNewView:input_type -> pb.NewViewMessage
-	29, // 30: pb.PBFTReplica.SendCheckPointMessage:input_type -> pb.CheckpointMessageRequest
-	35, // 31: pb.PBFTReplica.PrintDB:input_type -> google.protobuf.Empty
-	19, // 32: pb.PBFTReplica.PrintStatus:input_type -> pb.PrintStatusRequest
-	21, // 33: pb.PBFTReplica.PrintView:input_type -> pb.PrintViewRequest
-	23, // 34: pb.PBFTReplica.PrintLog:input_type -> pb.PrintLogRequest
-	23, // 35: pb.PBFTReplica.PrintLogEntries:input_type -> pb.PrintLogRequest
-	8,  // 36: pb.ClientCallback.ReplyToClientFromNode:input_type -> pb.ReplyToClientRequest
-	8,  // 37: pb.PBFTReplica.SendRequestToLeader:output_type -> pb.ReplyToClientRequest
-	2,  // 38: pb.PBFTReplica.SendPrePrepare:output_type -> pb.PrePrepareMessageResponse
-	4,  // 39: pb.PBFTReplica.SendPrepare:output_type -> pb.PrepareMessageResponse
-	6,  // 40: pb.PBFTReplica.SendCommit:output_type -> pb.CommitMessageResponse
-	11, // 41: pb.PBFTReplica.ReadClientBalance:output_type -> pb.ReadClientBalanceResponse
-	35, // 42: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:output_type -> google.protobuf.Empty
-	35, // 43: pb.PBFTReplica.SendViewChange:output_type -> google.protobuf.Empty
-	35, // 44: pb.PBFTReplica.SendNewView:output_type -> google.protobuf.Empty
-	30, // 45: pb.PBFTReplica.SendCheckPointMessage:output_type -> pb.CheckpointMessageResponse
-	12, // 46: pb.PBFTReplica.PrintDB:output_type -> pb.PrintDBResponse
-	20, // 47: pb.PBFTReplica.PrintStatus:output_type -> pb.PrintStatusResponse
-	22, // 48: pb.PBFTReplica.PrintView:output_type -> pb.PrintViewResponse
-	25, // 49: pb.PBFTReplica.PrintLog:output_type -> pb.PrintLogResponse
-	28, // 50: pb.PBFTReplica.PrintLogEntries:output_type -> pb.PrintLogEntriesResponse
-	9,  // 51: pb.ClientCallback.ReplyToClientFromNode:output_type -> pb.Ack
-	37, // [37:52] is the sub-list for method output_type
-	22, // [22:37] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	33, // 12: pb.PrintViewResponse.newViewNumberToNewViewMessageMap:type_name -> pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry
+	30, // 13: pb.CheckPointMessageProof.checkpoint_message_requests:type_name -> pb.CheckpointMessageRequest
+	24, // 14: pb.PrintLogResponse.print_log_entries:type_name -> pb.PrintLogEntry
+	17, // 15: pb.StatusProofList.proofs:type_name -> pb.StatusProof
+	0,  // 16: pb.LogEntryMessage.transaction:type_name -> pb.Transaction
+	34, // 17: pb.LogEntryMessage.prepared_proof:type_name -> pb.LogEntryMessage.PreparedProofEntry
+	35, // 18: pb.LogEntryMessage.committed_proof:type_name -> pb.LogEntryMessage.CommittedProofEntry
+	28, // 19: pb.PrintLogEntriesResponse.log_entries:type_name -> pb.LogEntryMessage
+	36, // 20: pb.PrintLogEntriesResponse.checkPointMessageProofs:type_name -> pb.PrintLogEntriesResponse.CheckPointMessageProofsEntry
+	18, // 21: pb.PrintViewResponse.NewViewNumberToNewViewMessageMapEntry.value:type_name -> pb.NewViewMessage
+	27, // 22: pb.LogEntryMessage.PreparedProofEntry.value:type_name -> pb.StatusProofList
+	27, // 23: pb.LogEntryMessage.CommittedProofEntry.value:type_name -> pb.StatusProofList
+	25, // 24: pb.PrintLogEntriesResponse.CheckPointMessageProofsEntry.value:type_name -> pb.CheckPointMessageProof
+	7,  // 25: pb.PBFTReplica.SendRequestToLeader:input_type -> pb.ClientRequestMessage
+	1,  // 26: pb.PBFTReplica.SendPrePrepare:input_type -> pb.PrePrepareMessageRequest
+	3,  // 27: pb.PBFTReplica.SendPrepare:input_type -> pb.PrepareMessageRequest
+	5,  // 28: pb.PBFTReplica.SendCommit:input_type -> pb.CommitMessageRequest
+	10, // 29: pb.PBFTReplica.ReadClientBalance:input_type -> pb.ReadClientBalanceRequest
+	14, // 30: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:input_type -> pb.FlushAndUpdateStatusRequest
+	15, // 31: pb.PBFTReplica.SendViewChange:input_type -> pb.ViewChangeMessage
+	18, // 32: pb.PBFTReplica.SendNewView:input_type -> pb.NewViewMessage
+	30, // 33: pb.PBFTReplica.SendCheckPointMessage:input_type -> pb.CheckpointMessageRequest
+	37, // 34: pb.PBFTReplica.PrintDB:input_type -> google.protobuf.Empty
+	19, // 35: pb.PBFTReplica.PrintStatus:input_type -> pb.PrintStatusRequest
+	21, // 36: pb.PBFTReplica.PrintView:input_type -> pb.PrintViewRequest
+	23, // 37: pb.PBFTReplica.PrintLog:input_type -> pb.PrintLogRequest
+	23, // 38: pb.PBFTReplica.PrintLogEntries:input_type -> pb.PrintLogRequest
+	8,  // 39: pb.ClientCallback.ReplyToClientFromNode:input_type -> pb.ReplyToClientRequest
+	8,  // 40: pb.PBFTReplica.SendRequestToLeader:output_type -> pb.ReplyToClientRequest
+	2,  // 41: pb.PBFTReplica.SendPrePrepare:output_type -> pb.PrePrepareMessageResponse
+	4,  // 42: pb.PBFTReplica.SendPrepare:output_type -> pb.PrepareMessageResponse
+	6,  // 43: pb.PBFTReplica.SendCommit:output_type -> pb.CommitMessageResponse
+	11, // 44: pb.PBFTReplica.ReadClientBalance:output_type -> pb.ReadClientBalanceResponse
+	37, // 45: pb.PBFTReplica.FlushPreviousDataAndUpdatePeersStatus:output_type -> google.protobuf.Empty
+	37, // 46: pb.PBFTReplica.SendViewChange:output_type -> google.protobuf.Empty
+	37, // 47: pb.PBFTReplica.SendNewView:output_type -> google.protobuf.Empty
+	31, // 48: pb.PBFTReplica.SendCheckPointMessage:output_type -> pb.CheckpointMessageResponse
+	12, // 49: pb.PBFTReplica.PrintDB:output_type -> pb.PrintDBResponse
+	20, // 50: pb.PBFTReplica.PrintStatus:output_type -> pb.PrintStatusResponse
+	22, // 51: pb.PBFTReplica.PrintView:output_type -> pb.PrintViewResponse
+	26, // 52: pb.PBFTReplica.PrintLog:output_type -> pb.PrintLogResponse
+	29, // 53: pb.PBFTReplica.PrintLogEntries:output_type -> pb.PrintLogEntriesResponse
+	9,  // 54: pb.ClientCallback.ReplyToClientFromNode:output_type -> pb.Ack
+	40, // [40:55] is the sub-list for method output_type
+	25, // [25:40] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_proto_pbft_proto_init() }
@@ -2350,7 +2422,7 @@ func file_proto_pbft_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_pbft_proto_rawDesc), len(file_proto_pbft_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   35,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

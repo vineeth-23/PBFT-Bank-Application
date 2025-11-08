@@ -123,9 +123,8 @@ type Node struct {
 	LogEntries map[int32]*LogEntry
 	Balances   map[string]int32
 
-	AlreadyExecutedTransactions               map[string]*pb.ReplyToClientRequest
-	LastExecutedSequenceNumber                int32
-	ViewNumberToLastExecutedSequenceNumberMap map[int32]int32
+	AlreadyExecutedTransactions map[string]*pb.ReplyToClientRequest
+	LastExecutedSequenceNumber  int32
 
 	IsAlive     bool
 	IsMalicious bool
@@ -151,21 +150,20 @@ func NewNode(id int32, address string, peers map[int32]string) *Node {
 		panic(err)
 	}
 	n := &Node{
-		ID:                            id,
-		Address:                       address,
-		ViewNumber:                    1,
-		SequenceNumber:                0,
-		PrivKey:                       priv,
-		PubKey:                        pub,
-		PubKeysOfNodes:                make(map[int32]ed25519.PublicKey),
-		LogEntries:                    make(map[int32]*LogEntry),
-		Balances:                      make(map[string]int32),
-		AlreadyExecutedTransactions:   make(map[string]*pb.ReplyToClientRequest),
-		TriggeredViewChange:           make(map[int32]bool),
-		AllNewViewMessagesForPrinting: make(map[int32]*pb.NewViewMessage),
-		AllMessagesForPrintingLog:     make([]*MessageLogEntry, 0),
-		LastExecutedSequenceNumber:    0,
-		ViewNumberToLastExecutedSequenceNumberMap: make(map[int32]int32),
+		ID:                             id,
+		Address:                        address,
+		ViewNumber:                     1,
+		SequenceNumber:                 0,
+		PrivKey:                        priv,
+		PubKey:                         pub,
+		PubKeysOfNodes:                 make(map[int32]ed25519.PublicKey),
+		LogEntries:                     make(map[int32]*LogEntry),
+		Balances:                       make(map[string]int32),
+		AlreadyExecutedTransactions:    make(map[string]*pb.ReplyToClientRequest),
+		TriggeredViewChange:            make(map[int32]bool),
+		AllNewViewMessagesForPrinting:  make(map[int32]*pb.NewViewMessage),
+		AllMessagesForPrintingLog:      make([]*MessageLogEntry, 0),
+		LastExecutedSequenceNumber:     0,
 		IsMalicious:                    false,
 		LastCheckpointedSequenceNumber: 0,
 		CheckpointProofs:               make(map[int32][]*pb.CheckpointMessageRequest),
@@ -180,7 +178,7 @@ func NewNode(id int32, address string, peers map[int32]string) *Node {
 		clientID := string(r)
 		err := database.UpdateClientBalance(id, clientID, 10)
 		if err != nil {
-			log.Printf("[Node %d] ⚠️ Failed to initialize Redis balance for client=%s: %v", id, clientID, err)
+			log.Printf("[Node %d] Failed to initialize Redis balance for client=%s: %v", id, clientID, err)
 		}
 	}
 
@@ -194,7 +192,6 @@ func (s *Node) ResetForNewSetAndUpdateNodeStatus(req *pb.FlushAndUpdateStatusReq
 	s.LogEntries = make(map[int32]*LogEntry)
 	s.AlreadyExecutedTransactions = make(map[string]*pb.ReplyToClientRequest)
 	s.LastExecutedSequenceNumber = 0
-	s.ViewNumberToLastExecutedSequenceNumberMap = make(map[int32]int32)
 	s.SequenceNumber = 0
 	s.ViewNumber = 1
 	s.IsAlive = false

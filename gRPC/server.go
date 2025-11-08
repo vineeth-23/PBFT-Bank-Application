@@ -88,16 +88,16 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		return nil, status.Errorf(codes.PermissionDenied, "invalid client signature for client_id=%s", req.GetClientId())
 	}
 
-	n.Unlock()
-	log.Printf("Calling ResetNodeTimer from SendReqToLeader func")
-	n.ResetNodeTimer()
-	n.Lock()
-
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
 		n.Unlock()
 		return nil, status.Error(codes.Unavailable, "Node is simulating a crash attack and is temporarily unavailable")
 	}
+
+	n.Unlock()
+	log.Printf("Calling ResetNodeTimer from SendReqToLeader func")
+	n.ResetNodeTimer()
+	n.Lock()
 
 	currentLeaderID := GetLeaderBasedOnViewNumber(n.ViewNumber)
 	if n.ID != currentLeaderID {
@@ -131,6 +131,16 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		return respFromLeader, nil
 	}
 
+	for _, entry := range n.LogEntries {
+		if entry.Digest == digest &&
+			(entry.Status == node.StatusPrePrepared || entry.Status == node.StatusPrepared || entry.Status == node.StatusCommitted || entry.Status == node.StatusExecuted) {
+			n.Unlock()
+			log.Printf("[Node %d] 🔁 Transaction digest=%s already in log with status=%v → ignoring",
+				n.ID, digest[:8], entry.Status)
+			return nil, nil
+		}
+	}
+
 	var majSeq, view int32
 	//{
 	var maxi int32
@@ -140,6 +150,9 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		}
 		if n.ViewNumber == entry.ViewNumber {
 			log.Printf("Already existing transaction in the same view:%d, sequence_num:%d with digest:%s", entry.ViewNumber, entry.SequenceNumber, digest[:8])
+			if entry.Transaction != nil {
+				log.Printf("Transaction is: (%s->%s (%d): amnt:%d", entry.Transaction.FromClientID, entry.Transaction.ToClientID, entry.Transaction.Time, entry.Transaction.Amount)
+			}
 		}
 	}
 	majSeq = maxi + 1
@@ -285,6 +298,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				follower := pb.NewPBFTReplicaClient(conn)
 				cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 				defer cancel()
+				n.AddMessageLog("PREPREPARE", "sent", m.SequenceNumber, n.ID, peerID, m.ViewNumber)
 				resp, err := follower.SendPrePrepare(cctx, m)
 				if err != nil {
 					log.Printf("[Leader %d] ❌ SendPrePrepare->n%d error: %v", s.Node.ID, peerID, err)
@@ -349,14 +363,19 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				}
 				defer conn.Close()
 
-				cli := pb.NewPBFTReplicaClient(conn)
+				replica := pb.NewPBFTReplicaClient(conn)
 				cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 				defer cancel()
-				resp, err := cli.SendPrepare(cctx, prepReq)
+				n.AddMessageLog("PREPARE", "sent", prepReq.GetSequenceNumber(), n.ID, peerID, s.Node.ViewNumber)
+				resp, err := replica.SendPrepare(cctx, prepReq)
 				if err != nil {
 					log.Printf("[Leader %d] ❌ SendPrepare->n%d error: %v", s.Node.ID, peerID, err)
 					return
 				}
+				if resp.GetStatus() == string(node.StatusPrepared) {
+					n.AddMessageLog("PREPARED", "received", prepReq.GetSequenceNumber(), peerID, n.ID, resp.GetViewNumber())
+				}
+
 				responses <- resp
 			}(pid, addr)
 		}
@@ -418,10 +437,11 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				}
 				defer conn.Close()
 
-				cli := pb.NewPBFTReplicaClient(conn)
+				replica := pb.NewPBFTReplicaClient(conn)
 				cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 				defer cancel()
-				if _, err := cli.SendCommit(cctx, commitReq); err != nil {
+				n.AddMessageLog("COMMIT", "send", commitReq.GetSequenceNumber(), n.ID, peerID, n.ViewNumber)
+				if _, err := replica.SendCommit(cctx, commitReq); err != nil {
 					log.Printf("[Leader %d] ❌ SendCommit->n%d error: %v", s.Node.ID, peerID, err)
 					return
 				}
@@ -443,14 +463,14 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 		return nil, status.Error(codes.Aborted, "Node is not alive")
 	}
 
-	log.Printf("Calling ResetNodeTimer from sendPrePrepare func")
-	n.ResetNodeTimer()
-
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
 		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for SendPrePrepare", s.Node.ID)
 		return nil, fmt.Errorf("node %d is simulating a crash attack and cannot respond to SendPrePrepare request", s.Node.ID)
 	}
+
+	log.Printf("Calling ResetNodeTimer from sendPrePrepare func")
+	n.ResetNodeTimer()
 
 	n.Lock()
 
@@ -607,7 +627,7 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 	}
 
 	log.Printf("Calling ResetNodeTimer from SendPrepare func")
-	n.ResetNodeTimer()
+	//n.ResetNodeTimer()
 
 	n.Lock()
 
@@ -698,7 +718,7 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 	}
 
 	for _, logEntry := range s.Node.LogEntries {
-		log.Printf("Seq_No: %d,  Status: %s", logEntry.SequenceNumber, logEntry.Status)
+		log.Printf("Seq_No: %d,  Status: %s, View_no: %d", logEntry.SequenceNumber, logEntry.Status, logEntry.ViewNumber)
 		//log.Printf("Seq_No: %d, Transaction: (%s->%s: %d (amnt: %d)), Status: %s", logEntry.SequenceNumber, logEntry.Transaction.FromClientID, logEntry.Transaction.ToClientID, logEntry.Transaction.Time, logEntry.Transaction.Amount, logEntry.Status)
 	}
 	for _, logEntry := range s.Node.LogEntries {
@@ -766,7 +786,7 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 	}
 
 	log.Printf("Calling ResetNodeTimer from SendCommit func")
-	n.ResetNodeTimer()
+	//n.ResetNodeTimer()
 
 	n.Lock()
 
@@ -1084,7 +1104,7 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 		return &emptypb.Empty{}, nil
 	}
 
-	if msg.NewViewNumber < n.ViewNumber {
+	if msg.NewViewNumber <= n.ViewNumber {
 		log.Printf("[Node %d] ⏮️ Ignoring NEW-VIEW with view=%d <= current=%d", n.ID, msg.NewViewNumber, n.ViewNumber)
 		return &emptypb.Empty{}, nil
 	}
@@ -1119,6 +1139,9 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 
 			if existing, ok := n.LogEntries[pre.SequenceNumber]; ok && existing != nil {
 				if existing.Status == node.StatusExecuted {
+					if isCheckPointingEnabled && existing.SequenceNumber > s.Node.LastCheckpointedSequenceNumber {
+						existing.ViewNumber = view
+					}
 					n.Unlock()
 					continue
 				}
@@ -1246,7 +1269,7 @@ func (s *NodeServer) PrintDB(ctx context.Context, _ *emptypb.Empty) (*pb.PrintDB
 	} else {
 		for _, le := range entries {
 			if le.Transaction != nil {
-				fmt.Printf("  n=%d v=%d status=%s  tx=(%s→%s a=%d t=%d)\n",
+				fmt.Printf("  n=%d v=%d status=%s  tx=(%s→%s a=%d t=%d) \n",
 					le.SequenceNumber,
 					le.ViewNumber,
 					le.Status,
@@ -1376,13 +1399,15 @@ func (s *NodeServer) PrintLogEntries(ctx context.Context, req *pb.PrintLogReques
 	n.Lock()
 	defer n.Unlock()
 
-	resp := &pb.PrintLogEntriesResponse{}
+	resp := &pb.PrintLogEntriesResponse{
+		LogEntries: make([]*pb.LogEntryMessage, 0),
+	}
 
 	for _, entry := range n.LogEntries {
 		protoEntry := &pb.LogEntryMessage{
 			Digest:         entry.Digest,
-			ViewNumber:     entry.ViewNumber,
 			SequenceNumber: entry.SequenceNumber,
+			ViewNumber:     entry.ViewNumber,
 			Status:         string(entry.Status),
 		}
 
@@ -1426,9 +1451,10 @@ func (s *NodeServer) PrintLogEntries(ctx context.Context, req *pb.PrintLogReques
 			}
 			protoEntry.CommittedProof[replicaID] = list
 		}
-
 		resp.LogEntries = append(resp.LogEntries, protoEntry)
 	}
+	resp.CheckPointMessageProofs = toProtoCheckpointProofs(n.CheckpointProofs)
+	resp.LastCheckpointedSequenceNumber = n.LastCheckpointedSequenceNumber
 
 	return resp, nil
 }
