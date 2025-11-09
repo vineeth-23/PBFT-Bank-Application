@@ -205,7 +205,7 @@ func (h *Hub) ExecuteReadTransaction(ctx context.Context, clientID string) (int3
 			count := len(tally[it.bal])
 			//log.Printf("[READ][%s] tally balance=%d -> %d/%d", clientID, it.bal, count, quorum)
 			if count >= quorum {
-				log.Printf("[READ][%s] Recievied response from %d nodes => quorum reached: balance=%d", clientID, count, it.bal)
+				log.Printf("[READ][%s] Recievied same response from %d nodes => quorum reached: balance=%d", clientID, count, it.bal)
 				return it.bal, true
 			}
 		case <-timeout.C:

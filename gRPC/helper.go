@@ -18,10 +18,9 @@ import (
 )
 
 const (
-	F                      = 2
-	clientCallbackAddr     = "localhost:7000"
-	checkPointingInterval  = 100
-	isCheckPointingEnabled = false
+	F                     = 2
+	clientCallbackAddr    = "localhost:7000"
+	checkPointingInterval = 100
 )
 
 func generateBytesForDigest(tx *pb.Transaction) []byte {
@@ -256,6 +255,10 @@ func quorumSizeForTriggeringViewChangeMessage() int {
 	return 3 // F+1
 }
 
+func quorumSizeForTriggeringNewViewMessage() int {
+	return 5 // 2*F+1
+}
+
 func isLeaderForNewView(nodeID int32, newView int32, totalPeers int32) bool {
 	if nodeID == ((newView-1)%totalPeers)+1 {
 		return true
@@ -345,6 +348,15 @@ func toProtoCheckpointProofs(src map[int32][]*pb.CheckpointMessageRequest) map[i
 
 func (s *NodeServer) addToLogRecordsForSendNewView(seq int32, msg *pb.NewViewMessage, view int32) {
 	n := s.Node
+	if !n.Nvl {
+		return
+	}
+	// checkpointing enabled
+	if n.Cp {
+		if seq <= n.LastCheckpointedSequenceNumber {
+			return
+		}
+	}
 	n.AddMessageLog("PREPREPARE", "received", seq, msg.SourceId, s.Node.ID, view)
 	n.AddMessageLog("PREPREPARED", "sent", seq, s.Node.ID, msg.SourceId, view)
 	n.AddMessageLog("PREPARE", "received", seq, msg.SourceId, s.Node.ID, view)

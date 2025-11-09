@@ -133,9 +133,14 @@ type Node struct {
 
 	AllNewViewMessagesForPrinting map[int32]*pb.NewViewMessage
 	AllMessagesForPrintingLog     []*MessageLogEntry
+	AddedLogsForNewViewNumber     map[int32]bool
 
 	LastCheckpointedSequenceNumber int32
 	CheckpointProofs               map[int32][]*pb.CheckpointMessageRequest
+
+	// evi avsrm led
+	Nvl bool
+	Cp  bool
 
 	mu sync.Mutex
 }
@@ -163,6 +168,9 @@ func NewNode(id int32, address string, peers map[int32]string) *Node {
 		IsMalicious:                    false,
 		LastCheckpointedSequenceNumber: 0,
 		CheckpointProofs:               make(map[int32][]*pb.CheckpointMessageRequest),
+		AddedLogsForNewViewNumber:      make(map[int32]bool),
+		Nvl:                            false,
+		Cp:                             false,
 	}
 	n.Peers = peers
 
@@ -199,6 +207,7 @@ func (s *Node) ResetForNewSetAndUpdateNodeStatus(req *pb.FlushAndUpdateStatusReq
 	s.TriggeredViewChange = make(map[int32]bool)
 	s.LastCheckpointedSequenceNumber = 0
 	s.CheckpointProofs = make(map[int32][]*pb.CheckpointMessageRequest)
+	s.AddedLogsForNewViewNumber = make(map[int32]bool)
 
 	if s.electionTimer != nil {
 		s.electionTimer.Stop()

@@ -136,6 +136,7 @@ func (s *Node) InitiateViewChange() {
 			node := pb.NewPBFTReplicaClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
+			s.AddMessageLog("VIEW_CHANGE", "sent", -1, s.ID, pid, s.ViewNumber)
 			_, err = node.SendViewChange(ctx, vcm)
 			if err != nil {
 				log.Printf("[Node %d] SendViewChange to n%d failed: %v", s.ID, pid, err)
@@ -145,7 +146,7 @@ func (s *Node) InitiateViewChange() {
 }
 
 func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMessages []*pb.ViewChangeMessage) error {
-	if newView < s.ViewNumber {
+	if newView <= s.ViewNumber {
 		//log.Printf("[Node %d] Ignoring NEW-VIEW for outdated view=%d (current=%d)", s.ID, newView, s.ViewNumber)
 		return nil
 	}
@@ -232,6 +233,7 @@ func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMes
 	}
 
 	s.Unlock()
+	var validNodeIds []int32
 	for pid, addr := range s.Peers {
 		isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack))
 		if isDarkAttack && common.IsNodePresentInAttackNodes(darkAttackNodes, pid) {
@@ -239,6 +241,7 @@ func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMes
 			//	s.ID, pid)
 			continue
 		}
+		validNodeIds = append(validNodeIds, pid)
 		go func(id int32, addr string) {
 			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
@@ -257,6 +260,9 @@ func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMes
 			}
 		}(pid, addr)
 	}
+	s.Lock()
+	s.addMessageLogsInLeaderForNewView(validNodeIds, newViewMsg.PrePrepares, newView)
+	s.Unlock()
 	return nil
 }
 
@@ -303,4 +309,75 @@ func HasAttack(nodeID int32, name common.Attack, maliciousPeers []*int32, attack
 // Avasaram leni function, demo kosam oorkaney raasa
 func sendRequesttToLeader(ctx context.Context, req *pb.ClientRequestMessage) error {
 	return nil
+}
+
+func (s *Node) addMessageLogsInLeaderForNewView(validNodeIds []int32, PrePrepares []*pb.PrePrepareMessageRequest, newView int32) {
+	log.Printf("s.Nvl = %t", s.Nvl)
+	if !s.Nvl {
+		return
+	}
+	if _, ok := s.AddedLogsForNewViewNumber[newView]; ok {
+		return
+	}
+	for _, prePreprepareMsg := range PrePrepares {
+		sequenceNumber := prePreprepareMsg.SequenceNumber
+		if s.Cp {
+			if sequenceNumber <= s.LastCheckpointedSequenceNumber {
+				continue
+			}
+		}
+		newViewNumber := prePreprepareMsg.GetViewNumber()
+		for _, nodeId := range validNodeIds {
+			s.AddMessageLog("PREPREPARE", "sent", sequenceNumber, s.ID, nodeId, newViewNumber)
+		}
+	}
+	for _, prePreprepareMsg := range PrePrepares {
+		sequenceNumber := prePreprepareMsg.SequenceNumber
+		if s.Cp {
+			if sequenceNumber <= s.LastCheckpointedSequenceNumber {
+				continue
+			}
+		}
+		newViewNumber := prePreprepareMsg.GetViewNumber()
+		for _, nodeId := range validNodeIds {
+			s.AddMessageLog("PREPREPARED", "received", sequenceNumber, s.ID, nodeId, newViewNumber)
+		}
+	}
+	for _, prePreprepareMsg := range PrePrepares {
+		sequenceNumber := prePreprepareMsg.SequenceNumber
+		if s.Cp {
+			if sequenceNumber <= s.LastCheckpointedSequenceNumber {
+				continue
+			}
+		}
+		newViewNumber := prePreprepareMsg.GetViewNumber()
+		for _, nodeId := range validNodeIds {
+			s.AddMessageLog("PREPARE", "sent", sequenceNumber, s.ID, nodeId, newViewNumber)
+		}
+	}
+	for _, prePreprepareMsg := range PrePrepares {
+		sequenceNumber := prePreprepareMsg.SequenceNumber
+		if s.Cp {
+			if sequenceNumber <= s.LastCheckpointedSequenceNumber {
+				continue
+			}
+		}
+		newViewNumber := prePreprepareMsg.GetViewNumber()
+		for _, nodeId := range validNodeIds {
+			s.AddMessageLog("PREPARED", "received", sequenceNumber, s.ID, nodeId, newViewNumber)
+		}
+	}
+	for _, prePreprepareMsg := range PrePrepares {
+		sequenceNumber := prePreprepareMsg.SequenceNumber
+		if s.Cp {
+			if sequenceNumber <= s.LastCheckpointedSequenceNumber {
+				continue
+			}
+		}
+		newViewNumber := prePreprepareMsg.GetViewNumber()
+		for _, nodeId := range validNodeIds {
+			s.AddMessageLog("COMMIT", "sent", sequenceNumber, s.ID, nodeId, newViewNumber)
+		}
+	}
+	s.AddedLogsForNewViewNumber[newView] = true
 }

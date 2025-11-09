@@ -15,9 +15,14 @@ func main() {
 	id := flag.Int("id", 1, "node ID (1–7)")
 	priv := flag.String("priv", "", "path to node's private key (e.g., keys/node1.priv)")
 	manifest := flag.String("manifest", "cluster/manifest.json", "path to cluster manifest")
+	nvl := flag.Bool("nvl", false, "nvl") // kotha view logs chupinchala leda
+	cp := flag.Bool("cp", false, "cp")
 	flag.Parse()
 	database.InitRedisClient("localhost:6379")
 	fmt.Println("Connected to Redis at localhost:6379")
+
+	fmt.Println("NVL:", *nvl)
+	fmt.Println("CP:", *cp)
 
 	if *priv == "" {
 		*priv = filepath.Join("keys", fmt.Sprintf("node%d.priv", *id))
@@ -40,6 +45,8 @@ func main() {
 	}
 	n.Address = addr
 	n.Peers = addrs
+	n.Nvl = *nvl
+	n.Cp = *cp
 
 	fmt.Println("Loading key file:", *priv)
 	if err := n.LoadPrivateKey(*priv); err != nil {

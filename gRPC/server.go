@@ -56,7 +56,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 	n.Lock()
 	tx := req.GetTransaction()
 	//log.Printf(
-	//	"[Node %d] 📥 Received ClientRequestttt → client_id=%s, tx=(%s→%s, amount=%d, time=%d)",
+	//	"[Node %d] Received ClientRequestttt → client_id=%s, tx=(%s→%s, amount=%d, time=%d)",
 	//	n.ID,
 	//	req.GetClientId(),
 	//	tx.GetFromClientId(),
@@ -256,6 +256,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 	n.Unlock()
 
 	ppResponses := make([]*pb.PrePrepareMessageResponse, 0, len(targetPeers)+1)
+	n.AddMessageLog("PREPREPARE", "sent", ppMajor.SequenceNumber, n.ID, n.ID, ppMajor.ViewNumber)
 	if resp, _ := s.SendPrePrepare(context.Background(), ppMajor); resp != nil {
 		if resp.Status == string(node.StatusPrePrepared) {
 			ppResponses = append(ppResponses, resp)
@@ -299,6 +300,9 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				defer cancel()
 				n.AddMessageLog("PREPREPARE", "sent", m.SequenceNumber, n.ID, peerID, m.ViewNumber)
 				resp, err := follower.SendPrePrepare(cctx, m)
+				if resp.GetStatus() == string(node.StatusPrePrepared) {
+					n.AddMessageLog("PREPREPARED", "received", m.GetSequenceNumber(), peerID, n.ID, m.ViewNumber)
+				}
 				if err != nil {
 					//log.Printf("[Leader %d] SendPrePrepare->n%d error: %v", s.Node.ID, peerID, err)
 					return
@@ -337,6 +341,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		time.Sleep(1 * time.Millisecond)
 	}
 
+	n.AddMessageLog("PREPARE", "sent", prepReq.GetSequenceNumber(), n.ID, n.ID, s.Node.ViewNumber)
 	if resp, _ := s.SendPrepare(context.Background(), prepReq); resp != nil {
 		if resp.Status == string(node.StatusPrepared) {
 			prepResponses = append(prepResponses, resp)
@@ -1000,7 +1005,7 @@ func (s *NodeServer) SendViewChange(ctx context.Context, msg *pb.ViewChangeMessa
 	}
 
 	msgs := n.ViewChangeMessages[msg.NewViewNumber]
-	quorumSizeForTriggeringNewViewMsg := quorumSizeForTriggeringViewChangeMessage()
+	quorumSizeForTriggeringNewViewMsg := quorumSizeForTriggeringNewViewMessage()
 	isNodeLeaderForNewView := isLeaderForNewView(n.ID, msg.NewViewNumber, int32(len(n.Peers)))
 	n.Unlock()
 
@@ -1036,7 +1041,7 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 
 	//log.Printf("Recievied New View Message from NodeID: %d with new_view_number: %d", msg.GetSourceId(), msg.GetNewViewNumber())
 	if !n.IsAlive {
-		//log.Printf("[Node %d] 🔇 Ignoring NEW-VIEW from n%d: not alive", n.ID, msg.SourceId)
+		//log.Printf("[Node %d] Ignoring NEW-VIEW from n%d: not alive", n.ID, msg.SourceId)
 		return nil, status.Error(codes.Aborted, "Node is not alive")
 	}
 
@@ -1082,7 +1087,7 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 
 			if existing, ok := n.LogEntries[pre.SequenceNumber]; ok && existing != nil {
 				if existing.Status == node.StatusExecuted {
-					if !(isCheckPointingEnabled && existing.SequenceNumber > s.Node.LastCheckpointedSequenceNumber) {
+					if !(s.Node.Cp && existing.SequenceNumber > s.Node.LastCheckpointedSequenceNumber) {
 						existing.ViewNumber = view
 					}
 					n.Unlock()
