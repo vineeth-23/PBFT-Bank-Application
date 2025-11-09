@@ -19,7 +19,7 @@ const (
 )
 
 func (s *Node) ResetNodeTimer() {
-	log.Printf("ResetNodeTimer started at %v", time.Now())
+	//log.Printf("ResetNodeTimer started at %v", time.Now())
 	s.Lock()
 	if s.electionTimer != nil {
 		s.electionTimer.Stop()
@@ -30,8 +30,6 @@ func (s *Node) ResetNodeTimer() {
 	timeout := 10000 * time.Millisecond
 
 	s.electionTimer = time.AfterFunc(timeout, func() {
-		//s.Lock()
-		//defer s.Unlock()
 		newViewNumber := s.getNextValidNewViewNumber()
 		if s.TriggeredViewChange[newViewNumber] {
 			return
@@ -43,7 +41,7 @@ func (s *Node) ResetNodeTimer() {
 }
 
 func (s *Node) StopNodeTimer() {
-	log.Printf("Stopping node timer")
+	//log.Printf("Stopping node timer")
 	s.Lock()
 	if s.electionTimer != nil {
 		s.electionTimer.Stop()
@@ -58,16 +56,16 @@ func (s *Node) InitiateViewChange() {
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
 		s.Unlock()
-		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for InitiateViewChange", s.ID)
+		//log.Printf("[Node %d] Simulating crash attack — No response sent for InitiateViewChange", s.ID)
 		return
 	}
 
 	newViewNumber := s.getNextValidNewViewNumber()
 	s.TriggeredViewChange[newViewNumber] = true
-	log.Printf("[Node %d] Timer expired → Initiating VIEW CHANGE to view %d", s.ID, newViewNumber)
+	//log.Printf("[Node %d] Timer expired → Initiating VIEW CHANGE to view %d", s.ID, newViewNumber)
 
 	var pm []*pb.PreparedProofSet
-	log.Printf("InitiateViewChange: Number of entries in logEntries I have is: %d", len(s.LogEntries))
+	//log.Printf("InitiateViewChange: Number of entries in logEntries I have is: %d", len(s.LogEntries))
 	for seq, le := range s.LogEntries {
 		if isValidStateToIncludeInViewChange(le.Status) {
 			prepProofs := []*pb.StatusProof{}
@@ -95,13 +93,13 @@ func (s *Node) InitiateViewChange() {
 					Amount:       le.Transaction.Amount,
 					Time:         le.Transaction.Time,
 				}
-				log.Printf("My valid log is: Transaction: (%s->%s (%d) Amnt: %d) SeqNo: %d - Status: %s", le.Transaction.FromClientID, le.Transaction.ToClientID, le.Transaction.Time, le.Transaction.Amount, le.SequenceNumber, le.Status)
+				//log.Printf("My valid log is: Transaction: (%s->%s (%d) Amnt: %d) SeqNo: %d - Status: %s", le.Transaction.FromClientID, le.Transaction.ToClientID, le.Transaction.Time, le.Transaction.Amount, le.SequenceNumber, le.Status)
 			}
 			pm = append(pm, pmReq)
 		}
 	}
 
-	log.Printf("InitiateViewChange: Number of valid logEntries I have is: %d", len(pm))
+	//log.Printf("InitiateViewChange: Number of valid logEntries I have is: %d", len(pm))
 
 	vcm := &pb.ViewChangeMessage{
 		NewViewNumber:    newViewNumber,
@@ -112,7 +110,7 @@ func (s *Node) InitiateViewChange() {
 	bytes := crypto.GenerateBytesForViewChangeMessage(s.ID)
 	isSignAttack, _ := s.HasAttack(string(common.SignAttack))
 	if isSignAttack {
-		log.Printf("Signing invalid sign for node %d in InitiateViewChange", s.ID)
+		//log.Printf("Signing invalid sign for node %d in InitiateViewChange", s.ID)
 		vcm.Signature = crypto.SignInvalidTamper(s.PrivKey, bytes)
 	} else {
 		vcm.Signature = s.Sign(bytes)
@@ -123,15 +121,15 @@ func (s *Node) InitiateViewChange() {
 	for peerID, addr := range s.Peers {
 		isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack))
 		if isDarkAttack && common.IsNodePresentInAttackNodes(darkAttackNodes, peerID) {
-			log.Printf("[Node %d] 🕳️ in-dark: view change rpc is not sent to n%d ",
-				s.ID, peerID)
+			//log.Printf("[Node %d] in-dark: view change rpc is not sent to n%d ",
+			//	s.ID, peerID)
 			continue
 		}
 
 		go func(pid int32, paddr string) {
 			conn, err := grpc.Dial(paddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
-				log.Printf("[Node %d] ⚠️ Failed to dial node n%d for view change: %v", s.ID, pid, err)
+				//log.Printf("[Node %d] Failed to dial node n%d for view change: %v", s.ID, pid, err)
 				return
 			}
 			defer conn.Close()
@@ -140,7 +138,7 @@ func (s *Node) InitiateViewChange() {
 			defer cancel()
 			_, err = node.SendViewChange(ctx, vcm)
 			if err != nil {
-				log.Printf("[Node %d] ❌ SendViewChange to n%d failed: %v", s.ID, pid, err)
+				log.Printf("[Node %d] SendViewChange to n%d failed: %v", s.ID, pid, err)
 			}
 		}(peerID, addr)
 	}
@@ -148,24 +146,24 @@ func (s *Node) InitiateViewChange() {
 
 func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMessages []*pb.ViewChangeMessage) error {
 	if newView < s.ViewNumber {
-		log.Printf("[Node %d] Ignoring NEW-VIEW for outdated view=%d (current=%d)", s.ID, newView, s.ViewNumber)
+		//log.Printf("[Node %d] Ignoring NEW-VIEW for outdated view=%d (current=%d)", s.ID, newView, s.ViewNumber)
 		return nil
 	}
 
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
-		log.Printf("[Node %d] Simulating crash attack — ignoring NEW-VIEW for view=%d", s.ID, newView)
+		//log.Printf("[Node %d] Simulating crash attack — ignoring NEW-VIEW for view=%d", s.ID, newView)
 		return fmt.Errorf("node %d is simulating a crash attack and cannot initiate new view", s.ID)
 	}
 
 	s.Lock()
-	log.Printf("[Node %d] 🆕 Initiating NEW-VIEW v=%d with %d view-change messages", s.ID, newView, len(viewChangeMessages))
+	//log.Printf("[Node %d] Initiating NEW-VIEW v=%d with %d view-change messages", s.ID, newView, len(viewChangeMessages))
 
 	oSet := make([]*pb.PrePrepareMessageRequest, 0)
 	maxSeq := int32(0)
 
 	for _, msg := range viewChangeMessages {
-		log.Printf("Recievied %d messages from Node-%d for intiating new view", len(msg.GetPreparedProofSet()), msg.NodeId)
+		//log.Printf("Recievied %d messages from Node-%d for intiating new view", len(msg.GetPreparedProofSet()), msg.NodeId)
 		for _, pset := range msg.PreparedProofSet {
 			if pset.SequenceNumber > maxSeq {
 				maxSeq = pset.SequenceNumber
@@ -173,7 +171,7 @@ func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMes
 		}
 	}
 
-	log.Printf("IntiateNewView: Max sequence number: %d", maxSeq)
+	//log.Printf("IntiateNewView: Max sequence number: %d", maxSeq)
 
 	for seq := int32(1); seq <= maxSeq; seq++ {
 		var selectedPset *pb.PreparedProofSet
@@ -215,8 +213,7 @@ func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMes
 		}
 	}
 
-	//s.ViewNumber = newView
-	log.Printf("[Node %d] ✅ Intiating new view v=%d with max sequence=%d", s.ID, s.ViewNumber, maxSeq)
+	//log.Printf("[Node %d] Intiating new view v=%d with max sequence=%d", s.ID, s.ViewNumber, maxSeq)
 
 	newViewMsg := &pb.NewViewMessage{
 		NewViewNumber: newView,
@@ -228,7 +225,7 @@ func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMes
 	bytes := crypto.GenerateBytesOnlyForNodeID(s.ID)
 	isSignAttack, _ := s.HasAttack(string(common.SignAttack))
 	if isSignAttack {
-		log.Printf("Signing invalid sign for node %d in InitiateViewChange", s.ID)
+		//log.Printf("Signing invalid sign for node %d in InitiateViewChange", s.ID)
 		newViewMsg.Signature = crypto.SignInvalidTamper(s.PrivKey, bytes)
 	} else {
 		newViewMsg.Signature = s.Sign(bytes)
@@ -238,14 +235,14 @@ func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMes
 	for pid, addr := range s.Peers {
 		isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack))
 		if isDarkAttack && common.IsNodePresentInAttackNodes(darkAttackNodes, pid) {
-			log.Printf("[Node %d] 🕳️ in-dark: view change rpc is not sent to n%d ",
-				s.ID, pid)
+			//log.Printf("[Node %d] in-dark: view change rpc is not sent to n%d ",
+			//	s.ID, pid)
 			continue
 		}
 		go func(id int32, addr string) {
 			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
-				log.Printf("[Node %d] ❌ Failed to dial peer n%d: %v", s.ID, id, err)
+				//log.Printf("[Node %d] Failed to dial peer n%d: %v", s.ID, id, err)
 				return
 			}
 			defer conn.Close()
@@ -256,7 +253,7 @@ func (s *Node) InitiateNewView(ctx context.Context, newView int32, viewChangeMes
 			s.AddMessageLog("NEW-VIEW", "sent", -1, s.ID, id, newViewMsg.NewViewNumber)
 			_, err = node.SendNewView(ctx, newViewMsg)
 			if err != nil {
-				log.Printf("[Node %d] ❌ SendNewView to n%d failed: %v", s.ID, id, err)
+				log.Printf("[Node %d] SendNewView to n%d failed: %v", s.ID, id, err)
 			}
 		}(pid, addr)
 	}
@@ -272,7 +269,7 @@ func (s *Node) getNextValidNewViewNumber() int32 {
 		isNextLeaderHavingCrashAttack, _ := HasAttack(nextLeader, common.CrashAttack, s.MaliciousPeers, s.Attacks)
 		isNextLeaderPresentInAlivePeers := checkIfNodeIsPresentInGivenPeers(s.AlivePeers, nextLeader)
 		if isNextLeaderPresentInAlivePeers && !isNextLeaderHavingCrashAttack {
-			log.Printf("Current view number is %d and next valid view number for me is: %d", s.ViewNumber, nextView)
+			//log.Printf("Current view number is %d and next valid view number for me is: %d", s.ViewNumber, nextView)
 			return nextView
 		}
 	}

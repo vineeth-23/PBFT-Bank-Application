@@ -49,7 +49,7 @@ func main() {
 			log.Fatalf("callback server: %v", err)
 		}
 	}()
-	log.Printf("Client callback server listening at %s", callbackAddr)
+	//log.Printf("Client callback server listening at %s", callbackAddr)
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -137,22 +137,20 @@ func runClientTxsSequentially(
 
 				reply, ok := h.ExecuteTransaction(ctx, cid, tx, liveAddrs, byzAddrs)
 				if !ok || reply == nil {
-					log.Printf("[t=%d][%s] no quorum (timeout)", tx.Time, cid)
+					//log.Printf("[t=%d][%s] no quorum (timeout)", tx.Time, cid)
 					continue
 				}
 
 				if reply.View > hLatestView(h) {
 					hSetLatestView(h, reply.View)
 				}
-				log.Printf("[t=%d][%s] ACCEPTED result=%t view=%d by r=%d",
-					tx.Time, cid, reply.Result, reply.View, reply.ReplicaId)
+				//log.Printf("[t=%d][%s] ACCEPTED result=%t view=%d by r=%d",
+				//	tx.Time, cid, reply.Result, reply.View, reply.ReplicaId)
 			}
 		}()
 	}
 	wg.Wait()
 }
-
-// ===== helpers (unchanged) =====
 
 func loadManifestIntoHub(h *cl.Hub, path string) error {
 	b, err := os.ReadFile(path)
@@ -174,9 +172,6 @@ func loadManifestIntoHub(h *cl.Hub, path string) error {
 		raw, err := hex.DecodeString(strings.TrimSpace(r.PubKey))
 		if err != nil {
 			return fmt.Errorf("bad replica pub hex (id=%d): %w", r.ID, err)
-		}
-		if len(raw) != ed25519.PrivateKeySize && len(raw) != ed25519.PublicKeySize {
-			// being lenient; main check was already done in your node code
 		}
 		h.ReplicaPubs[r.ID] = ed25519.PublicKey(raw)
 	}
@@ -242,7 +237,6 @@ func flushAllReplicasAndUpdateNodeStatus(ctx context.Context, h *cl.Hub) {
 	wg.Wait()
 }
 
-// small helpers to read/set latest view with lock
 func hLatestView(h *cl.Hub) int32 {
 	h.Mu.Lock()
 	defer h.Mu.Unlock()

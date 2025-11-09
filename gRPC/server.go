@@ -3,7 +3,6 @@ package gRPC
 import (
 	"context"
 	"fmt"
-	//"google.golang.org/protobuf/types/known/timestamppb"
 	"log"
 	"net"
 	"pbft-bank-application/common"
@@ -41,7 +40,7 @@ func (s *NodeServer) StartServer() {
 	grpcServer := grpc.NewServer()
 	pb.RegisterPBFTReplicaServer(grpcServer, s)
 
-	log.Printf("Node %d running gRPC server at %s", s.Node.ID, addr)
+	//log.Printf("Node %d running gRPC server at %s", s.Node.ID, addr)
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Node %s failed to serve: %v", s.Node.ID, err)
 	}
@@ -56,38 +55,38 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 
 	n.Lock()
 	tx := req.GetTransaction()
-	log.Printf(
-		"[Node %d] 📥 Received ClientRequestttt → client_id=%s, tx=(%s→%s, amount=%d, time=%d)",
-		n.ID,
-		req.GetClientId(),
-		tx.GetFromClientId(),
-		tx.GetToClientId(),
-		tx.GetAmount(),
-		tx.GetTime(),
-	)
+	//log.Printf(
+	//	"[Node %d] 📥 Received ClientRequestttt → client_id=%s, tx=(%s→%s, amount=%d, time=%d)",
+	//	n.ID,
+	//	req.GetClientId(),
+	//	tx.GetFromClientId(),
+	//	tx.GetToClientId(),
+	//	tx.GetAmount(),
+	//	tx.GetTime(),
+	//)
 	digest := s.TxDigest(tx)
 
 	for _, entry := range n.LogEntries {
 		if entry.Digest == digest &&
 			(entry.Status == node.StatusPrePrepared || entry.Status == node.StatusPrepared || entry.Status == node.StatusCommitted || entry.Status == node.StatusExecuted) {
 			n.Unlock()
-			log.Printf("[Node %d] 🔁 Transaction digest=%s already in log with status=%v → ignoring",
-				n.ID, digest[:8], entry.Status)
+			//log.Printf("[Node %d] Transaction digest=%s already in log with status=%v → ignoring",
+			//	n.ID, digest[:8], entry.Status)
 			return nil, nil
 		}
 	}
 
 	if cached, ok := n.AlreadyExecutedTransactions[digest]; ok && cached != nil {
 		n.Unlock()
-		log.Printf("[Node %d] 🔁 Cache hit for t=%d (digest=%s) → returning cached reply",
-			n.ID, tx.GetTime(), digest[:8])
+		//log.Printf("[Node %d] Cache hit for t=%d (digest=%s) → returning cached reply",
+		//	n.ID, tx.GetTime(), digest[:8])
 		return cached, nil
 	}
 
 	if !n.VerifyClientSignatureBasedOnTransaction(req.GetClientId(), tx, req.GetClientSig()) {
 		n.Unlock()
-		log.Printf("[Node %d] ❌ Invalid client signature for client_id=%s tx=(%s→%s a=%d t=%d)",
-			n.ID, req.GetClientId(), tx.GetFromClientId(), tx.GetToClientId(), tx.GetAmount(), tx.GetTime())
+		//log.Printf("[Node %d] Invalid client signature for client_id=%s tx=(%s→%s a=%d t=%d)",
+		//	n.ID, req.GetClientId(), tx.GetFromClientId(), tx.GetToClientId(), tx.GetAmount(), tx.GetTime())
 		return nil, status.Errorf(codes.PermissionDenied, "invalid client signature for client_id=%s", req.GetClientId())
 	}
 
@@ -98,7 +97,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 	}
 
 	n.Unlock()
-	log.Printf("Calling ResetNodeTimer from SendReqToLeader func")
+	//log.Printf("Calling ResetNodeTimer from SendReqToLeader func")
 	n.ResetNodeTimer()
 	n.Lock()
 
@@ -107,14 +106,14 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		leaderAddr, ok := s.Node.Peers[currentLeaderID]
 		if !ok {
 			n.Unlock()
-			log.Printf("[Node %d] Leader for view=%d is n%d but address unknown",
-				s.Node.ID, n.ViewNumber, currentLeaderID)
+			//log.Printf("[Node %d] Leader for view=%d is n%d but address unknown",
+			//	s.Node.ID, n.ViewNumber, currentLeaderID)
 			return nil, status.Error(codes.FailedPrecondition, "leader unknown")
 		}
 		n.Unlock()
 
-		log.Printf("[Node %d] Forwarding t=%d (digest=%s) to leader n%d @ %s",
-			s.Node.ID, tx.GetTime(), digest[:8], currentLeaderID, leaderAddr)
+		//log.Printf("[Node %d] Forwarding t=%d (digest=%s) to leader n%d @ %s",
+		//	s.Node.ID, tx.GetTime(), digest[:8], currentLeaderID, leaderAddr)
 
 		conn, err := grpc.Dial(leaderAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
@@ -138,37 +137,35 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		if entry.Digest == digest &&
 			(entry.Status == node.StatusPrePrepared || entry.Status == node.StatusPrepared || entry.Status == node.StatusCommitted || entry.Status == node.StatusExecuted) {
 			n.Unlock()
-			log.Printf("[Node %d] 🔁 Transaction digest=%s already in log with status=%v → ignoring",
-				n.ID, digest[:8], entry.Status)
+			//log.Printf("[Node %d] Transaction digest=%s already in log with status=%v → ignoring",
+			//	n.ID, digest[:8], entry.Status)
 			return nil, nil
 		}
 	}
 
 	var majSeq, view int32
-	//{
 	var maxi int32
 	for _, entry := range n.LogEntries {
 		if n.ViewNumber == entry.ViewNumber && entry.SequenceNumber > maxi {
 			maxi = entry.SequenceNumber
 		}
-		if n.ViewNumber == entry.ViewNumber {
-			log.Printf("Already existing transaction in the same view:%d, sequence_num:%d with digest:%s", entry.ViewNumber, entry.SequenceNumber, digest[:8])
-			if entry.Transaction != nil {
-				log.Printf("Transaction is: (%s->%s (%d): amnt:%d", entry.Transaction.FromClientID, entry.Transaction.ToClientID, entry.Transaction.Time, entry.Transaction.Amount)
-			}
-		}
+		//if n.ViewNumber == entry.ViewNumber {
+		//	log.Printf("Already existing transaction in the same view:%d, sequence_num:%d with digest:%s", entry.ViewNumber, entry.SequenceNumber, digest[:8])
+		//	if entry.Transaction != nil {
+		//		log.Printf("Transaction is: (%s->%s (%d): amnt:%d", entry.Transaction.FromClientID, entry.Transaction.ToClientID, entry.Transaction.Time, entry.Transaction.Amount)
+		//	}
+		//}
 	}
 	majSeq = maxi + 1
 	view = n.ViewNumber
-	log.Printf("Assigining majSeq=%d in view=%d for trasaction: (%s->%s (%d) amt:%d)", majSeq, view, req.Transaction.FromClientId, req.Transaction.ToClientId, req.Transaction.Time, req.Transaction.Amount)
-	//}
+	//log.Printf("Assigining majSeq=%d in view=%d for trasaction: (%s->%s (%d) amt:%d)", majSeq, view, req.Transaction.FromClientId, req.Transaction.ToClientId, req.Transaction.Time, req.Transaction.Amount)
+
 	isEquiv, eqTargets := s.HasAttack(string(common.EquivocationAttack))
 	baseSeq := majSeq
 	if isEquiv {
 		baseSeq = majSeq + 1
 	}
 
-	//if _, exists := n.LogEntries[majSeq]; !exists {
 	intTx := &node.Transaction{
 		FromClientID: tx.FromClientId,
 		ToClientID:   tx.ToClientId,
@@ -184,7 +181,6 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		PreparedProof:  make(map[int32][]*node.StatusProof),
 		CommittedProof: make(map[int32][]*node.StatusProof),
 	}
-	//}
 
 	if _, exists := n.LogEntries[baseSeq]; !exists {
 		intTx := &node.Transaction{
@@ -214,7 +210,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 	bytes := GenerateBytesForSign(baseSeq, digest)
 
 	if isSignAttack, _ := s.HasAttack(string(common.SignAttack)); isSignAttack {
-		log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
+		//log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
 		ppVictim.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
 	} else {
 		ppVictim.Signature = n.Sign(bytes)
@@ -231,7 +227,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 	bytes = GenerateBytesForSign(majSeq, digest)
 
 	if isSignAttack, _ := s.HasAttack(string(common.SignAttack)); isSignAttack {
-		log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
+		//log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
 		ppMajor.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
 	} else {
 		ppMajor.Signature = n.Sign(bytes)
@@ -277,14 +273,14 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		for pid, addr := range targetPeers {
 			if isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack)); isDarkAttack &&
 				IsNodePresentInAttackNodes(darkAttackNodes, pid) {
-				log.Printf("[Node %d] in-dark: Not sending pre-prepare to n%d",
-					s.Node.ID, pid)
+				//log.Printf("[Node %d] in-dark: Not sending pre-prepare to n%d",
+				//	s.Node.ID, pid)
 				continue
 			}
 
 			prePrepareRequest := ppMajor
 			if isVictim(pid) {
-				log.Printf("Equivocation attack:: Sending wrong preprepare request to node %d", pid)
+				//log.Printf("Equivocation attack:: Sending wrong preprepare request to node %d", pid)
 				prePrepareRequest = ppVictim
 			}
 
@@ -293,7 +289,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				defer wg.Done()
 				conn, err := grpc.Dial(peerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 				if err != nil {
-					log.Printf("[Leader %d] ❌ SendPrePrepare dial %s failed: %v", s.Node.ID, peerAddr, err)
+					//log.Printf("[Leader %d] SendPrePrepare dial %s failed: %v", s.Node.ID, peerAddr, err)
 					return
 				}
 				defer conn.Close()
@@ -304,7 +300,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				n.AddMessageLog("PREPREPARE", "sent", m.SequenceNumber, n.ID, peerID, m.ViewNumber)
 				resp, err := follower.SendPrePrepare(cctx, m)
 				if err != nil {
-					log.Printf("[Leader %d] ❌ SendPrePrepare->n%d error: %v", s.Node.ID, peerID, err)
+					//log.Printf("[Leader %d] SendPrePrepare->n%d error: %v", s.Node.ID, peerID, err)
 					return
 				}
 				responses <- resp
@@ -316,8 +312,8 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 			ppResponses = append(ppResponses, r)
 		}
 	}
-	log.Printf("[Leader %d] 📤 PRE-PREPARE collected %d/%d follower acks (plus local)",
-		s.Node.ID, len(ppResponses)-1, len(targetPeers))
+	//log.Printf("[Leader %d] PRE-PREPARE collected %d/%d follower acks (plus local)",
+	//	s.Node.ID, len(ppResponses)-1, len(targetPeers))
 
 	n.Lock()
 	prepReq := &pb.PrepareMessageRequest{
@@ -328,7 +324,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 	bytes = GenerateBytesForSign(majSeq, digest)
 
 	if isSignAttack, _ := s.HasAttack(string(common.SignAttack)); isSignAttack {
-		log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
+		//log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
 		prepReq.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
 	} else {
 		prepReq.Signature = s.Node.Sign(bytes)
@@ -352,8 +348,8 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		for pid, addr := range targetPeers {
 			if isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack)); isDarkAttack &&
 				IsNodePresentInAttackNodes(darkAttackNodes, pid) {
-				log.Printf("[Node %d] in-dark: Not sending prepare to n%d",
-					s.Node.ID, pid)
+				//log.Printf("[Node %d] in-dark: Not sending prepare to n%d",
+				//	s.Node.ID, pid)
 				continue
 			}
 			wg.Add(1)
@@ -361,7 +357,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				defer wg.Done()
 				conn, err := grpc.Dial(peerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 				if err != nil {
-					log.Printf("[Leader %d] ❌ SendPrepare dial %s failed: %v", s.Node.ID, peerAddr, err)
+					//log.Printf("[Leader %d] SendPrepare dial %s failed: %v", s.Node.ID, peerAddr, err)
 					return
 				}
 				defer conn.Close()
@@ -372,7 +368,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				n.AddMessageLog("PREPARE", "sent", prepReq.GetSequenceNumber(), n.ID, peerID, s.Node.ViewNumber)
 				resp, err := replica.SendPrepare(cctx, prepReq)
 				if err != nil {
-					log.Printf("[Leader %d] ❌ SendPrepare->n%d error: %v", s.Node.ID, peerID, err)
+					//log.Printf("[Leader %d] SendPrepare->n%d error: %v", s.Node.ID, peerID, err)
 					return
 				}
 				if resp.GetStatus() == string(node.StatusPrepared) {
@@ -388,11 +384,11 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 			prepResponses = append(prepResponses, r)
 		}
 	}
-	log.Printf("[Leader %d] 📤 PREPARE collected %d/%d follower acks (plus local)",
-		s.Node.ID, len(prepResponses), len(targetPeers))
+	//log.Printf("[Leader %d] PREPARE collected %d/%d follower acks (plus local)",
+	//	s.Node.ID, len(prepResponses), len(targetPeers))
 
 	if len(prepResponses) <= 2*F {
-		log.Printf("Not enough Prepared found to go to commit")
+		//log.Printf("Not enough Prepared found to go to commit")
 		return nil, nil
 	}
 	n.Lock()
@@ -404,7 +400,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 	bytes = GenerateBytesForSign(majSeq, digest)
 
 	if isSignAttack, _ := s.HasAttack(string(common.SignAttack)); isSignAttack {
-		log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
+		//log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
 		commitReq.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
 	} else {
 		commitReq.Signature = s.Node.Sign(bytes)
@@ -416,17 +412,19 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		time.Sleep(1 * time.Millisecond)
 	}
 
-	if _, err := s.SendCommit(context.Background(), commitReq); err != nil {
-		log.Printf("[Leader %d] ❌ local SendCommit error: %v", s.Node.ID, err)
-	}
+	//if _, err := s.SendCommit(context.Background(), commitReq); err != nil {
+	//	log.Printf("[Leader %d] local SendCommit error: %v", s.Node.ID, err)
+	//}
+
+	s.SendCommit(context.Background(), commitReq)
 
 	{
 		var wg sync.WaitGroup
 		for pid, addr := range targetPeers {
 			if isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack)); isDarkAttack &&
 				IsNodePresentInAttackNodes(darkAttackNodes, pid) {
-				log.Printf("[Node %d] in-dark: Not sending commit to n%d",
-					s.Node.ID, pid)
+				//log.Printf("[Node %d] in-dark: Not sending commit to n%d",
+				//	s.Node.ID, pid)
 				continue
 			}
 
@@ -435,7 +433,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				defer wg.Done()
 				conn, err := grpc.Dial(peerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 				if err != nil {
-					log.Printf("[Leader %d] SendCommit dial %s failed: %v", s.Node.ID, peerAddr, err)
+					//log.Printf("[Leader %d] SendCommit dial %s failed: %v", s.Node.ID, peerAddr, err)
 					return
 				}
 				defer conn.Close()
@@ -445,15 +443,15 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 				defer cancel()
 				n.AddMessageLog("COMMIT", "send", commitReq.GetSequenceNumber(), n.ID, peerID, n.ViewNumber)
 				if _, err := replica.SendCommit(cctx, commitReq); err != nil {
-					log.Printf("[Leader %d] SendCommit->n%d error: %v", s.Node.ID, peerID, err)
+					//log.Printf("[Leader %d] SendCommit->n%d error: %v", s.Node.ID, peerID, err)
 					return
 				}
 			}(pid, addr)
 		}
 		wg.Wait()
 	}
-	log.Printf("[Leader %d] ✅ Commit phase dispatched for t=%d (v=%d, n=%d, digest=%s). Execution will be reported via client callback.",
-		s.Node.ID, tx.GetTime(), view, majSeq, digest[:8])
+	//log.Printf("[Leader %d] ✅ Commit phase dispatched for t=%d (v=%d, n=%d, digest=%s). Execution will be reported via client callback.",
+	//	s.Node.ID, tx.GetTime(), view, majSeq, digest[:8])
 
 	return nil, nil
 }
@@ -462,17 +460,17 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 	n := s.Node
 
 	if !n.IsAlive {
-		log.Printf("Node is not alive")
+		//log.Printf("Node is not alive")
 		return nil, status.Error(codes.Aborted, "Node is not alive")
 	}
 
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
-		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for SendPrePrepare", s.Node.ID)
+		//log.Printf("[Node %d] Simulating crash attack — No response sent for SendPrePrepare", s.Node.ID)
 		return nil, fmt.Errorf("node %d is simulating a crash attack and cannot respond to SendPrePrepare request", s.Node.ID)
 	}
 
-	log.Printf("Calling ResetNodeTimer from sendPrePrepare func")
+	//log.Printf("Calling ResetNodeTimer from sendPrePrepare func")
 	n.ResetNodeTimer()
 
 	n.Lock()
@@ -480,7 +478,7 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 	n.AddMessageLog("PREPREPARE", "received", req.SequenceNumber, req.ReplicaId, n.ID, req.ViewNumber)
 
 	if req.ViewNumber != n.ViewNumber {
-		log.Printf("[Node %d] Reject PrePrepare: wrong view (got=%d, cur=%d)", n.ID, req.ViewNumber, n.ViewNumber)
+		//log.Printf("[Node %d] Reject PrePrepare: wrong view (got=%d, cur=%d)", n.ID, req.ViewNumber, n.ViewNumber)
 		n.Unlock()
 		return &pb.PrePrepareMessageResponse{
 			ViewNumber:     req.ViewNumber,
@@ -494,8 +492,8 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 
 	if existing, ok := n.LogEntries[req.SequenceNumber]; ok {
 		if existing.ViewNumber == req.ViewNumber && existing.Digest != req.Digest {
-			log.Printf("[Node %d] Reject PrePrepare: conflicting digest for (v=%d, n=%d) (have=%s, got=%s)",
-				n.ID, req.ViewNumber, req.SequenceNumber, existing.Digest, req.Digest)
+			//log.Printf("[Node %d] Reject PrePrepare: conflicting digest for (v=%d, n=%d) (have=%s, got=%s)",
+			//	n.ID, req.ViewNumber, req.SequenceNumber, existing.Digest, req.Digest)
 			n.Unlock()
 			return &pb.PrePrepareMessageResponse{
 				ViewNumber:     req.ViewNumber,
@@ -505,24 +503,11 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 				Status:         string(node.StatusConflictingDigest),
 			}, nil
 		}
-
-		//if existing.Status == node.StatusPrePrepared || existing.Status == node.StatusPrepared ||
-		//	existing.Status == node.StatusCommitted || existing.Status == node.StatusExecuted {
-		//	resp := &pb.PrePrepareMessageResponse{
-		//		ViewNumber:     existing.ViewNumber,
-		//		SequenceNumber: existing.SequenceNumber,
-		//		Digest:         existing.Digest,
-		//		ReplicaId:      n.ID,
-		//		Status:         string(existing.Status),
-		//	}
-		//	n.Unlock()
-		//	return resp, nil
-		//}
 	}
 
 	prepBytes := GenerateBytesForSign(req.SequenceNumber, req.Digest)
 	if ok := n.VerifyReplicaSig(req.ReplicaId, prepBytes, req.Signature); !ok {
-		log.Printf("[Node %d] Reject PrePrepare: invalid leader signature from %d", n.ID, req.ReplicaId)
+		//log.Printf("[Node %d] Reject PrePrepare: invalid leader signature from %d", n.ID, req.ReplicaId)
 		n.Unlock()
 		return &pb.PrePrepareMessageResponse{
 			ViewNumber:     req.ViewNumber,
@@ -534,7 +519,7 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 	}
 
 	if req.Transaction == nil {
-		log.Printf("[Node %d] Reject PrePrepare: nil transaction", n.ID)
+		//log.Printf("[Node %d] Reject PrePrepare: nil transaction", n.ID)
 		n.Unlock()
 		return &pb.PrePrepareMessageResponse{
 			ViewNumber:     req.ViewNumber,
@@ -547,8 +532,8 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 
 	expectedDigest := s.TxDigest(req.Transaction)
 	if expectedDigest != req.Digest {
-		log.Printf("[Node %d] Reject PrePrepare: digest mismatch (expected=%s, got=%s)",
-			n.ID, expectedDigest, req.Digest)
+		//log.Printf("[Node %d] Reject PrePrepare: digest mismatch (expected=%s, got=%s)",
+		//	n.ID, expectedDigest, req.Digest)
 		n.Unlock()
 		return &pb.PrePrepareMessageResponse{
 			ViewNumber:     req.ViewNumber,
@@ -559,10 +544,6 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 		}, nil
 	}
 
-	//logKey := &node.LogKey{
-	//	SeqNumber:  req.SequenceNumber,
-	//	ViewNumber: req.ViewNumber,
-	//}
 	n.LogEntries[req.SequenceNumber] = &node.LogEntry{
 		Digest:         req.Digest,
 		ViewNumber:     req.ViewNumber,
@@ -579,8 +560,8 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 	}
 	n.Unlock()
 
-	log.Printf("[Node %d] Accepted PrePrepare (v=%d, n=%d, d=%s) from leader %d -> PRE-PREPARED",
-		n.ID, req.ViewNumber, req.SequenceNumber, req.Digest, req.ReplicaId)
+	//log.Printf("[Node %d] Accepted PrePrepare (v=%d, n=%d, d=%s) from leader %d -> PRE-PREPARED",
+	//	n.ID, req.ViewNumber, req.SequenceNumber, req.Digest, req.ReplicaId)
 
 	resp := &pb.PrePrepareMessageResponse{
 		ViewNumber:     req.ViewNumber,
@@ -592,7 +573,7 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 	bytes := GenerateBytesForSign(resp.SequenceNumber, resp.Digest)
 
 	if isSignAttack, _ := s.HasAttack(string(common.SignAttack)); isSignAttack {
-		log.Printf("Signing invalid sign for node %d in SendPrePrepare", s.Node.ID)
+		//log.Printf("Signing invalid sign for node %d in SendPrePrepare", s.Node.ID)
 		resp.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
 	} else {
 		resp.Signature = n.Sign(bytes)
@@ -600,16 +581,10 @@ func (s *NodeServer) SendPrePrepare(ctx context.Context, req *pb.PrePrepareMessa
 
 	if isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack)); isDarkAttack &&
 		IsNodePresentInAttackNodes(darkAttackNodes, req.ReplicaId) {
-		log.Printf("[Node %d] in-dark: dropping PrePrepare reply to n%d (v=%d,n=%d,d=%s)",
-			s.Node.ID, req.ReplicaId, resp.ViewNumber, resp.SequenceNumber, resp.Digest[:8])
+		//log.Printf("[Node %d] in-dark: dropping PrePrepare reply to n%d (v=%d,n=%d,d=%s)",
+		//	s.Node.ID, req.ReplicaId, resp.ViewNumber, resp.SequenceNumber, resp.Digest[:8])
 		return nil, status.Error(codes.Unavailable, "in-dark: simulated drop")
 	}
-
-	//log.Printf("---------Log Entries till now for view:%d are:------------------", s.Node.ViewNumber)
-	//for seqq_no, logEntry := range s.Node.LogEntries {
-	//	log.Printf("Seq_No: %d,  Seqq-No: %d, Status: %s, view: %d", logEntry.SequenceNumber, seqq_no, logEntry.Status, logEntry.ViewNumber)
-	//	//log.Printf("Seq_No: %d, Transaction: (%s->%s: %d (amnt: %d)), Status: %s, view: %d", logEntry.SequenceNumber, logEntry.Transaction.FromClientID, logEntry.Transaction.ToClientID, logEntry.Transaction.Time, logEntry.Transaction.Amount, logEntry.Status, logEntry.ViewNumber)
-	//}
 
 	n.AddMessageLog("PREPREPARED", "sent", resp.SequenceNumber, n.ID, req.ReplicaId, resp.ViewNumber)
 
@@ -625,11 +600,11 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
-		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for SendPrepare", s.Node.ID)
+		//log.Printf("[Node %d] Simulating crash attack — No response sent for SendPrepare", s.Node.ID)
 		return nil, fmt.Errorf("node %d is simulating a crash attack and cannot respond to SendPrepare request", s.Node.ID)
 	}
 
-	log.Printf("Calling ResetNodeTimer from SendPrepare func")
+	//log.Printf("Calling ResetNodeTimer from SendPrepare func")
 	//n.ResetNodeTimer()
 
 	n.Lock()
@@ -640,14 +615,6 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 			Status: "REJECTED_EMPTY_PROOFS",
 		}, nil
 	}
-
-	//logKey := &node.LogKey{
-	//	SeqNumber:  req.GetSequenceNumber(),
-	//	ViewNumber: n.ViewNumber,
-	//}
-	//if len(req.GetPrePreparedMessageResponse()) > 0 {
-	//	logKey.ViewNumber = req.GetPrePreparedMessageResponse()[0].ViewNumber
-	//}
 
 	entry, ok := n.LogEntries[req.GetSequenceNumber()]
 	if !ok {
@@ -684,7 +651,7 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 	for _, pp := range req.PrePreparedMessageResponse {
 		if !crypto.VerifyNodeSignatureBasedOnSequenceNumberAndDigest(
 			pp.ReplicaId, pp.GetSequenceNumber(), pp.GetDigest(), pp.GetSignature(), s.Node.PubKeysOfNodes) {
-			log.Printf("Invalid signature in SendPrepare found for node-%d", pp.ReplicaId)
+			//log.Printf("Invalid signature in SendPrepare found for node-%d", pp.ReplicaId)
 			continue
 		}
 
@@ -707,10 +674,10 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 		}
 	}
 
-	log.Printf("validBackupCount: %d for sequence number: %d", validBackupCount, req.GetSequenceNumber())
+	//log.Printf("validBackupCount: %d for sequence number: %d", validBackupCount, req.GetSequenceNumber())
 	if validBackupCount < 2*F+1 {
 		n.Unlock()
-		log.Printf("No quorum reached for PREPARED (i.e., no atleast 4 pre-prepared acks) for sequence_num=%d", currentSequenceNumber)
+		//log.Printf("No quorum reached for PREPARED (i.e., no atleast 4 pre-prepared acks) for sequence_num=%d", currentSequenceNumber)
 		return &pb.PrepareMessageResponse{
 			ViewNumber:     currentViewNumber,
 			SequenceNumber: currentSequenceNumber,
@@ -720,15 +687,14 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 		}, nil
 	}
 
-	for _, logEntry := range s.Node.LogEntries {
-		log.Printf("Seq_No: %d,  Status: %s, View_no: %d", logEntry.SequenceNumber, logEntry.Status, logEntry.ViewNumber)
-		//log.Printf("Seq_No: %d, Transaction: (%s->%s: %d (amnt: %d)), Status: %s", logEntry.SequenceNumber, logEntry.Transaction.FromClientID, logEntry.Transaction.ToClientID, logEntry.Transaction.Time, logEntry.Transaction.Amount, logEntry.Status)
-	}
+	//for _, logEntry := range s.Node.LogEntries {
+	//	log.Printf("Seq_No: %d,  Status: %s, View_no: %d", logEntry.SequenceNumber, logEntry.Status, logEntry.ViewNumber)
+	//}
 	for _, logEntry := range s.Node.LogEntries {
 		existingDigest := logEntry.Digest
 		if existingDigest == currentDigest && isValidStatus(logEntry.Status) {
 			n.Unlock()
-			log.Printf("Already message is prepared: Duplicacy found")
+			//log.Printf("Already message is prepared: Duplicacy found")
 			return nil, nil
 		}
 	}
@@ -754,7 +720,7 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 	bytes := GenerateBytesForSign(resp.SequenceNumber, resp.Digest)
 	isSignAttack, _ := s.HasAttack(string(common.SignAttack))
 	if isSignAttack {
-		log.Printf("Signing invalid sign for node %d in SendPrepare", s.Node.ID)
+		//log.Printf("Signing invalid sign for node %d in SendPrepare", s.Node.ID)
 		resp.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
 	} else {
 		resp.Signature = n.Sign(bytes)
@@ -762,12 +728,12 @@ func (s *NodeServer) SendPrepare(ctx context.Context, req *pb.PrepareMessageRequ
 
 	isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack))
 	if isDarkAttack && IsNodePresentInAttackNodes(darkAttackNodes, req.ReplicaId) {
-		log.Printf("[Node %d] 🕳️ in-dark: dropping Prepare reply to n%d (v=%d,n=%d,d=%s)",
-			s.Node.ID, req.ReplicaId, resp.ViewNumber, resp.SequenceNumber, resp.Digest[:8])
+		//log.Printf("[Node %d] in-dark: dropping Prepare reply to n%d (v=%d,n=%d,d=%s)",
+		//	s.Node.ID, req.ReplicaId, resp.ViewNumber, resp.SequenceNumber, resp.Digest[:8])
 		return nil, status.Error(codes.Unavailable, "in-dark: simulated drop")
 	}
 
-	log.Printf("[Node %d] Updated to PREPARED (sequence_no=%d) -> PREPARED", n.ID, req.GetSequenceNumber())
+	//log.Printf("[Node %d] Updated to PREPARED (sequence_no=%d) -> PREPARED", n.ID, req.GetSequenceNumber())
 
 	n.AddMessageLog("PREPARED", "sent", resp.SequenceNumber, n.ID, req.ReplicaId, resp.ViewNumber)
 
@@ -778,17 +744,17 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 	n := s.Node
 
 	if !n.IsAlive {
-		log.Printf("Node is not alive")
+		//log.Printf("Node is not alive")
 		return nil, status.Error(codes.Aborted, "Node is not alive")
 	}
 
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
-		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for SendCommit", s.Node.ID)
+		//log.Printf("[Node %d]  Simulating crash attack — No response sent for SendCommit", s.Node.ID)
 		return nil, fmt.Errorf("node %d is simulating a crash attack and cannot respond to SendCommit request", s.Node.ID)
 	}
 
-	log.Printf("Calling ResetNodeTimer from SendCommit func")
+	//log.Printf("Calling ResetNodeTimer from SendCommit func")
 	//n.ResetNodeTimer()
 
 	n.Lock()
@@ -813,30 +779,11 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 
 		if existingDigest == currentDigest && isValidStatusForCommitted(logEntry.Status) {
 			n.Unlock()
-			log.Printf("Already message is in valid state so no committing again: Duplicacy found")
+			//log.Printf("Already message is in valid state so no committing again: Duplicacy found")
 			return nil, nil
 		}
-
-		//existingDigest := logEntry.Digest
-		//entry, ok := n.LogEntries[logEntry.SequenceNumber]
-		//currentDigest := ""
-		//if ok {
-		//	currentDigest = entry.Digest
-		//}
-		//if existingDigest == currentDigest && isValidStatusForCommitted(logEntry.Status) {
-		//	n.Unlock()
-		//	log.Printf("Already message is in valid state so no committing again: Duplicacy found")
-		//	return nil, nil
-		//}
 	}
 
-	//logKey := &node.LogKey{
-	//	SeqNumber:  req.GetSequenceNumber(),
-	//	ViewNumber: s.Node.ViewNumber,
-	//}
-	//if len(req.GetPreparedMessageResponse()) > 0 {
-	//	logKey.ViewNumber = req.GetPreparedMessageResponse()[0].ViewNumber
-	//}
 	entry, ok := n.LogEntries[req.GetSequenceNumber()]
 	seq := req.GetSequenceNumber()
 	if !ok {
@@ -866,7 +813,6 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 		}, nil
 	}
 
-	// Collect and verify PREPARED proofs from distinct replicas
 	seen := map[int32]bool{}
 	validPreparedCount := 0
 	proofs := make(map[int32]*node.StatusProof)
@@ -879,7 +825,7 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 			pmr.GetSignature(),
 			s.Node.PubKeysOfNodes,
 		) {
-			log.Printf("Invalid signature in SendCommit found for node-%d", pmr.ReplicaId)
+			//log.Printf("Invalid signature in SendCommit found for node-%d", pmr.ReplicaId)
 			continue
 		}
 
@@ -905,10 +851,10 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 		}
 	}
 
-	log.Printf("ValidPreparedCount: %d for sequence number: %d", validPreparedCount, req.GetSequenceNumber())
+	//log.Printf("ValidPreparedCount: %d for sequence number: %d", validPreparedCount, req.GetSequenceNumber())
 	if validPreparedCount < (2*F + 1) {
 		n.Unlock()
-		log.Printf("No quorum reached for COMMIT (i.e., no atleast 5 prepared acks) for viewnumber=%d", currentViewNumber)
+		//log.Printf("No quorum reached for COMMIT (i.e., no atleast 5 prepared acks) for viewnumber=%d", currentViewNumber)
 		return &pb.CommitMessageResponse{
 			ViewNumber:     currentViewNumber,
 			SequenceNumber: currentSequenceNumber,
@@ -938,13 +884,13 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 	bytes := GenerateBytesForSign(resp.SequenceNumber, resp.Digest)
 	isSignAttack, _ := s.HasAttack(string(common.SignAttack))
 	if isSignAttack {
-		log.Printf("Signing invalid sign for node %d in SendPrePrepare", s.Node.ID)
+		//log.Printf("Signing invalid sign for node %d in SendPrePrepare", s.Node.ID)
 		resp.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
 	} else {
 		resp.Signature = n.Sign(bytes)
 	}
-	log.Printf("[Node %d] Updated to COMMITTED (sequence_no=%d)",
-		n.ID, req.GetSequenceNumber())
+	//log.Printf("[Node %d] Updated to COMMITTED (sequence_no=%d)",
+	//	n.ID, req.GetSequenceNumber())
 
 	n.AddMessageLog("COMMITTED", "sent", resp.SequenceNumber, n.ID, req.ReplicaId, resp.ViewNumber)
 
@@ -953,8 +899,8 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 
 	isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack))
 	if isDarkAttack && IsNodePresentInAttackNodes(darkAttackNodes, req.ReplicaId) {
-		log.Printf("[Node %d] 🕳️ in-dark: dropping Commit reply to n%d (v=%d,n=%d,d=%s)",
-			s.Node.ID, req.ReplicaId, resp.ViewNumber, resp.SequenceNumber, resp.Digest[:8])
+		//log.Printf("[Node %d] in-dark: dropping Commit reply to n%d (v=%d,n=%d,d=%s)",
+		//	s.Node.ID, req.ReplicaId, resp.ViewNumber, resp.SequenceNumber, resp.Digest[:8])
 		return nil, status.Error(codes.Unavailable, "in-dark: simulated drop")
 	}
 
@@ -968,7 +914,7 @@ func (s *NodeServer) ReadClientBalance(ctx context.Context, req *pb.ReadClientBa
 
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
-		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for ReadClientBalance", s.Node.ID)
+		//log.Printf("[Node %d]  Simulating crash attack — No response sent for ReadClientBalance", s.Node.ID)
 		return nil, fmt.Errorf("node %d is simulating a crash attack and cannot respond to ReadClientBalance request", s.Node.ID)
 	}
 
@@ -1002,7 +948,7 @@ func (s *NodeServer) ReadClientBalance(ctx context.Context, req *pb.ReadClientBa
 
 func (s *NodeServer) FlushPreviousDataAndUpdatePeersStatus(ctx context.Context, req *pb.FlushAndUpdateStatusRequest) (*emptypb.Empty, error) {
 	s.Node.ResetForNewSetAndUpdateNodeStatus(req)
-	log.Printf("[Node %d] Flushed state for new set. updated live nodes: %v", s.Node.ID, req.GetLiveNodes())
+	//log.Printf("[Node %d] Flushed state for new set. updated live nodes: %v", s.Node.ID, req.GetLiveNodes())
 	return &emptypb.Empty{}, nil
 }
 
@@ -1012,30 +958,30 @@ func (s *NodeServer) SendViewChange(ctx context.Context, msg *pb.ViewChangeMessa
 	n := s.Node
 
 	if !n.IsAlive {
-		log.Printf("[Node %d] 🔇 Ignoring view-change from n%d: not alive", n.ID, msg.NodeId)
+		//log.Printf("[Node %d] Ignoring view-change from n%d: not alive", n.ID, msg.NodeId)
 		return nil, status.Error(codes.Aborted, "Node is not alive")
 	}
 
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
-		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for SendViewChange", s.Node.ID)
+		//log.Printf("[Node %d] Simulating crash attack — No response sent for SendViewChange", s.Node.ID)
 		return nil, fmt.Errorf("node %d is simulating a crash attack and cannot respond to SendViewChange request", s.Node.ID)
 	}
 
 	if msg.NewViewNumber <= n.ViewNumber {
-		log.Printf("[Node %d] ⏮️ Ignoring outdated view-change from n%d (new_view=%d, current=%d)",
-			n.ID, msg.NodeId, msg.NewViewNumber, n.ViewNumber)
+		//log.Printf("[Node %d] Ignoring outdated view-change from n%d (new_view=%d, current=%d)",
+		//	n.ID, msg.NodeId, msg.NewViewNumber, n.ViewNumber)
 		return nil, nil
 	}
 
 	if !n.VerifyReplicaSig(msg.NodeId, crypto.GenerateBytesForViewChangeMessage(msg.NodeId), msg.Signature) {
-		log.Printf("[Node %d] 🚫 Invalid signature on view-change from n%d", n.ID, msg.NodeId)
+		//log.Printf("[Node %d] Invalid signature on view-change from n%d", n.ID, msg.NodeId)
 		return &emptypb.Empty{}, nil
 	}
 
 	n.Lock()
 	n.AddMessageLog("VIEW-CHANGE", "received", -1, msg.NodeId, n.ID, msg.NewViewNumber)
-	log.Printf("SendViewChange: Recievied %d prepared messages from node-%d", len(msg.GetPreparedProofSet()), n.ID)
+	//log.Printf("SendViewChange: Recievied %d prepared messages from node-%d", len(msg.GetPreparedProofSet()), n.ID)
 	if _, ok := n.ViewChangeMessages[msg.NewViewNumber]; !ok {
 		n.ViewChangeMessages[msg.NewViewNumber] = []*pb.ViewChangeMessage{}
 	}
@@ -1049,8 +995,8 @@ func (s *NodeServer) SendViewChange(ctx context.Context, msg *pb.ViewChangeMessa
 	}
 	if !alreadyExists {
 		n.ViewChangeMessages[msg.NewViewNumber] = append(n.ViewChangeMessages[msg.NewViewNumber], msg)
-		log.Printf("[Node %d] 📥 Received VIEW-CHANGE for view=%d from n%d number_of_view_change_msgs_recievied = (%d)",
-			n.ID, msg.NewViewNumber, msg.NodeId, len(n.ViewChangeMessages[msg.NewViewNumber]))
+		//log.Printf("[Node %d] Received VIEW-CHANGE for view=%d from n%d number_of_view_change_msgs_recievied = (%d)",
+		//	n.ID, msg.NewViewNumber, msg.NodeId, len(n.ViewChangeMessages[msg.NewViewNumber]))
 	}
 
 	msgs := n.ViewChangeMessages[msg.NewViewNumber]
@@ -1059,8 +1005,8 @@ func (s *NodeServer) SendViewChange(ctx context.Context, msg *pb.ViewChangeMessa
 	n.Unlock()
 
 	if len(msgs) >= quorumSizeForTriggeringNewViewMsg && isNodeLeaderForNewView {
-		log.Printf("[Node %d] 🚀 Quorum (2f+1=%d) view-change messages for v=%d reached and I am new primary → initiating NEW-VIEW",
-			n.ID, len(msgs), msg.NewViewNumber)
+		//log.Printf("[Node %d] Quorum (2f+1=%d) view-change messages for v=%d reached and I am new primary → initiating NEW-VIEW",
+		//	n.ID, len(msgs), msg.NewViewNumber)
 		err := n.InitiateNewView(ctx, msg.NewViewNumber, msgs)
 		if err != nil {
 			return nil, err
@@ -1072,8 +1018,8 @@ func (s *NodeServer) SendViewChange(ctx context.Context, msg *pb.ViewChangeMessa
 	quorumSizeForTriggeringViewChange := quorumSizeForTriggeringViewChangeMessage()
 	if len(n.ViewChangeMessages[msg.NewViewNumber]) >= quorumSizeForTriggeringViewChange {
 		if !n.TriggeredViewChange[msg.NewViewNumber] {
-			log.Printf("[Node %d] 🔁 Quorum for view-change v=%d reached (%d msgs) → initiating own view-change",
-				n.ID, msg.NewViewNumber, len(n.ViewChangeMessages[msg.NewViewNumber]))
+			//log.Printf("[Node %d] Quorum for view-change v=%d reached (%d msgs) → initiating own view-change",
+			//	n.ID, msg.NewViewNumber, len(n.ViewChangeMessages[msg.NewViewNumber]))
 			n.TriggeredViewChange[msg.NewViewNumber] = true
 			n.Unlock()
 			go n.InitiateViewChange()
@@ -1088,32 +1034,32 @@ func (s *NodeServer) SendViewChange(ctx context.Context, msg *pb.ViewChangeMessa
 func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*emptypb.Empty, error) {
 	n := s.Node
 
-	log.Printf("Recievied New View Message from NodeID: %d with new_view_number: %d", msg.GetSourceId(), msg.GetNewViewNumber())
+	//log.Printf("Recievied New View Message from NodeID: %d with new_view_number: %d", msg.GetSourceId(), msg.GetNewViewNumber())
 	if !n.IsAlive {
-		log.Printf("[Node %d] 🔇 Ignoring NEW-VIEW from n%d: not alive", n.ID, msg.SourceId)
+		//log.Printf("[Node %d] 🔇 Ignoring NEW-VIEW from n%d: not alive", n.ID, msg.SourceId)
 		return nil, status.Error(codes.Aborted, "Node is not alive")
 	}
 
 	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
 	if isCrashAttack {
-		log.Printf("[Node %d] ⚠️ Simulating crash attack — No response sent for SendNewView", s.Node.ID)
+		//log.Printf("[Node %d] Simulating crash attack — No response sent for SendNewView", s.Node.ID)
 		return nil, fmt.Errorf("node %d is simulating a crash attack and cannot respond to SendNewView request", s.Node.ID)
 	}
 
 	n.AddMessageLog("NEW-VIEW", "received", -1, msg.GetSourceId(), s.Node.ID, msg.GetNewViewNumber())
 
 	if !n.VerifyReplicaSig(msg.SourceId, crypto.GenerateBytesOnlyForNodeID(msg.SourceId), msg.Signature) {
-		log.Printf("[Node %d] Invalid signature on NEW-VIEW from n%d", n.ID, msg.SourceId)
+		//log.Printf("[Node %d] Invalid signature on NEW-VIEW from n%d", n.ID, msg.SourceId)
 		return &emptypb.Empty{}, nil
 	}
 
 	if msg.NewViewNumber <= n.ViewNumber {
-		log.Printf("[Node %d]  Ignoring NEW-VIEW with view=%d <= current=%d", n.ID, msg.NewViewNumber, n.ViewNumber)
+		//log.Printf("[Node %d]  Ignoring NEW-VIEW with view=%d <= current=%d", n.ID, msg.NewViewNumber, n.ViewNumber)
 		return &emptypb.Empty{}, nil
 	}
 
 	s.performActionsAfterNewViewIsRecievied(msg.NewViewNumber)
-	log.Printf("[Node %d] Accepted NEW-VIEW v=%d from n%d", n.ID, msg.NewViewNumber, msg.SourceId)
+	//log.Printf("[Node %d] Accepted NEW-VIEW v=%d from n%d", n.ID, msg.NewViewNumber, msg.SourceId)
 
 	n.Lock()
 	n.AllNewViewMessagesForPrinting[msg.GetNewViewNumber()] = msg
@@ -1129,9 +1075,10 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 			n.Lock()
 			digest := pre.Digest
 			seq := pre.SequenceNumber
-			//view := pre.ViewNumber
 			view := msg.NewViewNumber
 			transaction := pre.GetTransaction()
+
+			s.addToLogRecordsForSendNewView(seq, msg, view)
 
 			if existing, ok := n.LogEntries[pre.SequenceNumber]; ok && existing != nil {
 				if existing.Status == node.StatusExecuted {
@@ -1175,7 +1122,7 @@ func (s *NodeServer) SendCheckPointMessage(ctx context.Context, req *pb.Checkpoi
 	n := s.Node
 
 	if !n.VerifyReplicaSig(req.GetReplicaId(), crypto.GenerateBytesOnlyForNodeID(req.GetReplicaId()), req.Signature) {
-		log.Printf("[Node %d] 🚫 Invalid signature on Node from n%d", n.ID, req.GetReplicaId())
+		//log.Printf("[Node %d] Invalid signature on Node from n%d", n.ID, req.GetReplicaId())
 		return nil, nil
 	}
 
@@ -1187,7 +1134,7 @@ func (s *NodeServer) SendCheckPointMessage(ctx context.Context, req *pb.Checkpoi
 	seq := req.GetSequenceNumber()
 
 	if seq <= n.LastCheckpointedSequenceNumber {
-		log.Printf("[Node %d] 🔁 Checkpoint for seq=%d already completed", n.ID, seq)
+		//log.Printf("[Node %d] Checkpoint for seq=%d already completed", n.ID, seq)
 		return &pb.CheckpointMessageResponse{}, nil
 	}
 
@@ -1202,19 +1149,19 @@ func (s *NodeServer) SendCheckPointMessage(ctx context.Context, req *pb.Checkpoi
 	}
 
 	n.CheckpointProofs[seq] = append(n.CheckpointProofs[seq], req)
-	log.Printf("[Node %d] 🧾 Received checkpoint from n%d for seq=%d (%d total)",
-		n.ID, req.ReplicaId, seq, len(n.CheckpointProofs[seq]))
+	//log.Printf("[Node %d] Received checkpoint from n%d for seq=%d (%d total)",
+	//	n.ID, req.ReplicaId, seq, len(n.CheckpointProofs[seq]))
 
 	digestCounts := make(map[string]int)
 	for _, proof := range n.CheckpointProofs[seq] {
 		digestCounts[proof.Digest]++
 	}
 
-	for d, count := range digestCounts {
+	for _, count := range digestCounts {
 		if count >= 2*F+1 {
 			n.LastCheckpointedSequenceNumber = seq
 			n.AddMessageLog("CHECKPOINTED_SEQ_NO", "updated", req.GetSequenceNumber(), n.ID, n.ID, n.ViewNumber)
-			log.Printf("[Node %d] ✅ CHECKPOINT COMPLETE for seq=%d with digest=%s", n.ID, seq, d)
+			//log.Printf("[Node %d] CHECKPOINT COMPLETE for seq=%d with digest=%s", n.ID, seq, d)
 			break
 		}
 	}
@@ -1247,7 +1194,6 @@ func (s *NodeServer) PrintDB(ctx context.Context, _ *emptypb.Empty) (*pb.PrintDB
 	fmt.Println("===========================================")
 	fmt.Printf("Node %d State:\n", n.ID)
 	fmt.Printf("  Current ViewNumber       : %d\n", n.ViewNumber)
-	//fmt.Printf("  ViewChangeOngoing        : %v\n", n.ViewChangeOngoing)
 	fmt.Printf("  LastExecutedSequenceNumber: %d\n", n.LastExecutedSequenceNumber)
 	fmt.Println("===========================================")
 
@@ -1357,7 +1303,7 @@ func (s *NodeServer) PrintLog(ctx context.Context, req *pb.PrintLogRequest) (*pb
 	defer n.Unlock()
 
 	if len(n.AllMessagesForPrintingLog) == 0 {
-		log.Printf("[Node %d] No message logs available to print", n.ID)
+		//log.Printf("[Node %d] No message logs available to print", n.ID)
 		return &pb.PrintLogResponse{
 			PrintLogEntries: []*pb.PrintLogEntry{},
 		}, nil

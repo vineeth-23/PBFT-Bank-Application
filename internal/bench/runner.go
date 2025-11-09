@@ -61,7 +61,6 @@ func (r *Runner) init(ctx context.Context) error {
 		return err
 	}
 
-	// Initialize Hub and callback server from existing client package
 	r.hub = cl.NewHub()
 	r.hub.ReplicaAddrs = addrs
 	r.hub.ReplicaPubs = pubs
@@ -91,7 +90,6 @@ func (r *Runner) init(ctx context.Context) error {
 		}
 	}
 
-	// value of seed is 0 for realistic non-deterministic runs, non-zero fixed for reproducible tests
 	seed := time.Now().UnixNano()
 	//seed = 40
 	r.work = NewWorkload(10, r.cfg.WriteRatio, seed, r.cfg.ZipfS, r.cfg.ZipfV)
@@ -123,7 +121,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err := r.init(ctx); err != nil {
 		return err
 	}
-	log.Printf("[bench] starting: dur=%v, conc=%d, rate=%.1f, writeRatio=%.2f", r.cfg.Duration, r.cfg.Concurrency, r.cfg.Rate, r.cfg.WriteRatio)
+	//log.Printf("[bench] starting: dur=%v, conc=%d, rate=%.1f, writeRatio=%.2f", r.cfg.Duration, r.cfg.Concurrency, r.cfg.Rate, r.cfg.WriteRatio)
 	r.met.Start()
 
 	var wg sync.WaitGroup

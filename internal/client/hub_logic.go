@@ -29,17 +29,17 @@ func (h *Hub) verifyReplySig(r *pb.ReplyToClientRequest) bool {
 }
 
 func (h *Hub) ProcessNodeReply(r *pb.ReplyToClientRequest) {
-	log.Printf("[Hub] Processing reply from replica=%d | view=%d | time=%d | result=%t",
-		r.ReplicaId, r.View, r.Time, r.Result)
+	//log.Printf("[Hub] Processing reply from replica=%d | view=%d | time=%d | result=%t",
+	//	r.ReplicaId, r.View, r.Time, r.Result)
 
 	if r.GetView() > h.LatestView {
-		log.Printf("[Hub] 🔄 Updating latest view: old=%d → new=%d", h.LatestView, r.GetView())
+		//log.Printf("[Hub] Updating latest view: old=%d → new=%d", h.LatestView, r.GetView())
 		h.LatestView = r.GetView()
 	}
 
 	if !h.verifyReplySig(r) {
-		log.Printf("[Hub] ❌ Dropped invalid signature from replica=%d | time=%d | view=%d",
-			r.ReplicaId, r.Time, r.View)
+		//log.Printf("[Hub] Dropped invalid signature from replica=%d | time=%d | view=%d",
+		//	r.ReplicaId, r.Time, r.View)
 		return
 	}
 
@@ -55,19 +55,18 @@ func (h *Hub) ProcessNodeReply(r *pb.ReplyToClientRequest) {
 			waitCh:  make(chan struct{}),
 		}
 		h.buckets[key] = b
-		log.Printf("[Hub] 🆕 Created new bucket for time=%d", r.Time)
+		//log.Printf("[Hub] Created new bucket for time=%d", r.Time)
 	}
 
 	if _, seen := b.replies[r.ReplicaId]; seen {
-		log.Printf("[Hub] ⚠️ Duplicate reply ignored from replica=%d | time=%d", r.ReplicaId, r.Time)
+		//log.Printf("[Hub]  Duplicate reply ignored from replica=%d | time=%d", r.ReplicaId, r.Time)
 		return
 	}
 
-	// Record and tally this reply
 	b.replies[r.ReplicaId] = r
 	b.tally[r.Result]++
-	log.Printf("[Hub] 🧮 Tally update: result=%t → count=%d (replica=%d, time=%d)",
-		r.Result, b.tally[r.Result], r.ReplicaId, r.Time)
+	//log.Printf("[Hub] Tally update: result=%t → count=%d (replica=%d, time=%d)",
+	//	r.Result, b.tally[r.Result], r.ReplicaId, r.Time)
 
 	if b.accepted == nil && b.tally[r.Result] >= quorum {
 		b.accepted = r
@@ -76,8 +75,8 @@ func (h *Hub) ProcessNodeReply(r *pb.ReplyToClientRequest) {
 			log.Printf("It is in b.waitCh")
 		default:
 			close(b.waitCh)
-			log.Printf("[Hub] ✅ Quorum reached for time=%d | result=%t | view=%d | decided by replica=%d",
-				r.Time, r.Result, r.View, r.ReplicaId)
+			//log.Printf("[Hub] Quorum reached for time=%d | result=%t | view=%d | decided by replica=%d",
+			//	r.Time, r.Result, r.View, r.ReplicaId)
 		}
 	}
 }
@@ -127,7 +126,7 @@ func (h *Hub) waitQuorumOrTimeout(key ReplyKey) (*pb.ReplyToClientRequest, bool)
 				repliesReceived := h.buckets[key].replies
 				if len(repliesReceived) > 0 {
 					for _, reply := range repliesReceived {
-						log.Printf("Recievied reply for trnscn time: %d and closing", reply.Time)
+						//log.Printf("Recievied reply for trnscn time: %d and closing", reply.Time)
 						h.Mu.Unlock()
 						return reply, true
 					}
@@ -138,7 +137,6 @@ func (h *Hub) waitQuorumOrTimeout(key ReplyKey) (*pb.ReplyToClientRequest, bool)
 			return nil, false
 		}
 	}
-	//return nil, false
 }
 
 func (h *Hub) signTx(clientID string, tx *pb.Transaction) ([]byte, bool) {
@@ -154,17 +152,15 @@ func leaderForView(view int32) int32 { return (view % N) + 1 }
 func (h *Hub) ExecuteReadTransaction(ctx context.Context, clientID string) (int32, bool) {
 	sig, ok := crypto.SignReadRequestByClient(clientID, h.ClientPriv)
 	if !ok {
-		log.Printf("[READ][%s] no client key — abort", clientID)
 		return 0, false
 	}
 	req := &pb.ReadClientBalanceRequest{ClientId: clientID, Signature: sig}
 
 	all := h.dialAll()
 	if len(all) == 0 {
-		log.Printf("[READ][%s] no alive replicas to contact", clientID)
 		return 0, false
 	}
-	log.Printf("[READ][%s] broadcasting to %d replicas", clientID, len(all))
+	//log.Printf("[READ][%s] broadcasting to %d replicas", clientID, len(all))
 
 	type item struct {
 		bal int32
@@ -189,7 +185,6 @@ func (h *Hub) ExecuteReadTransaction(ctx context.Context, clientID string) (int3
 	}
 	wg.Wait()
 
-	// tally balances: balance -> set(replicaIDs)
 	tally := make(map[int32]map[int32]bool)
 	timeout := time.NewTimer(clientTimeout)
 	defer timeout.Stop()
@@ -200,7 +195,7 @@ func (h *Hub) ExecuteReadTransaction(ctx context.Context, clientID string) (int3
 		case it := <-respCh:
 			remaining--
 			if !crypto.VerifyReadRespSigByClient(it.rid, it.sig, h.ReplicaPubs) {
-				log.Printf("[READ][%s] drop invalid sig from r=%d", clientID, it.rid)
+				//log.Printf("[READ][%s] drop invalid sig from r=%d", clientID, it.rid)
 				continue
 			}
 			if _, ok := tally[it.bal]; !ok {
@@ -208,7 +203,7 @@ func (h *Hub) ExecuteReadTransaction(ctx context.Context, clientID string) (int3
 			}
 			tally[it.bal][it.rid] = true
 			count := len(tally[it.bal])
-			log.Printf("[READ][%s] tally balance=%d -> %d/%d", clientID, it.bal, count, quorum)
+			//log.Printf("[READ][%s] tally balance=%d -> %d/%d", clientID, it.bal, count, quorum)
 			if count >= quorum {
 				log.Printf("[READ][%s] Recievied response from %d nodes => quorum reached: balance=%d", clientID, count, it.bal)
 				return it.bal, true
@@ -219,14 +214,14 @@ func (h *Hub) ExecuteReadTransaction(ctx context.Context, clientID string) (int3
 		}
 	}
 
-	log.Printf("[READ][%s] finished without quorum", clientID)
+	//log.Printf("[READ][%s] finished without quorum", clientID)
 	return 0, false
 }
 
 func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Transaction, live, byz []string) (*pb.ReplyToClientRequest, bool) {
 	sig, ok := h.signTx(clientID, tx)
 	if !ok {
-		log.Printf("no key for client %s", clientID)
+		//log.Printf("no key for client %s", clientID)
 		return nil, false
 	}
 	req := &pb.ClientRequestMessage{
@@ -239,7 +234,7 @@ func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Tr
 	key := ReplyKey(tx.Time)
 
 	if r, ok := h.waitQuorumOrTimeout(key); ok {
-		log.Printf("✅ Transaction %d quorum satisfied before sending request", tx.Time)
+		//log.Printf(" Transaction %d quorum satisfied before sending request", tx.Time)
 		return r, true
 	}
 
@@ -248,7 +243,7 @@ func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Tr
 		if h.buckets[key] != nil {
 			repliesRecievied := h.buckets[key].replies
 			if len(repliesRecievied) > 0 {
-				log.Printf("Transaction %d already has cached reply — returning cached response", tx.Time)
+				//log.Printf("Transaction %d already has cached reply — returning cached response", tx.Time)
 				return repliesRecievied[0], true
 			}
 		}
@@ -257,21 +252,21 @@ func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Tr
 		leader := leaderForView(h.LatestView)
 		h.Mu.Unlock()
 
-		log.Printf("[Round %d] Sending transaction %d to leader node %d", round, tx.Time, leader)
+		//log.Printf("[Round %d] Sending transaction %d to leader node %d", round, tx.Time, leader)
 		if node, conn, err := h.dialReplica(leader); err == nil {
 			rpcCtx, cancel := context.WithTimeout(ctx, clientTimeout)
 			_, _ = node.SendRequestToLeader(rpcCtx, req)
 			cancel()
 			conn.Close()
-			if err != nil {
-				log.Printf("❌ Failed to send transaction %d to leader node %d: %v", tx.Time, leader, err)
-			} else {
-				log.Printf("📤 Successfully sent transaction %d to leader node %d", tx.Time, leader)
-			}
+			//if err != nil {
+			//	log.Printf(" Failed to send transaction %d to leader node %d: %v", tx.Time, leader, err)
+			//} else {
+			//	log.Printf(" Successfully sent transaction %d to leader node %d", tx.Time, leader)
+			//}
 		}
 
 		if r, ok := h.waitQuorumOrTimeout(key); ok {
-			log.Printf("✅ Transaction %d quorum reached after sending to leader", tx.Time)
+			//log.Printf(" Transaction %d quorum reached after sending to leader", tx.Time)
 			return r, true
 		}
 
@@ -279,7 +274,7 @@ func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Tr
 
 		all := h.dialAll()
 		var wg sync.WaitGroup
-		log.Printf("🔁 [Round %d] Broadcasting transaction %d to all replicas (%d total)", round, tx.Time, len(all))
+		//log.Printf(" [Round %d] Broadcasting transaction %d to all replicas (%d total)", round, tx.Time, len(all))
 		for _, cli := range all {
 			wg.Add(1)
 			go func(c pb.PBFTReplicaClient) {
@@ -296,11 +291,10 @@ func (h *Hub) ExecuteTransaction(ctx context.Context, clientID string, tx *pb.Tr
 		}
 
 		if round >= maxRetryCount {
-			log.Printf("❌ Transaction %d failed after %d retries — giving up", tx.Time, round)
+			log.Printf(" Transaction %d failed after %d retries — giving up", tx.Time, round)
 			return nil, false
 		}
 		round++
-		//log.Printf("🔁 Retrying transaction %d — next round=%d (backoff=%v)", tx.Time, round, retryBackoff)
 		time.Sleep(retryBackoff)
 	}
 }

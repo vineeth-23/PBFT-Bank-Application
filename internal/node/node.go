@@ -39,11 +39,10 @@ const (
 	StatusNotEnoughPrepared      Status = "NOT_ENOUGH_PREPARED"
 )
 
-// ReplicaEntryForKeys and Manifest are used for getting generated public and private keys for each node
 type ReplicaEntryForKeys struct {
 	ID     int32  `json:"id"`
 	Addr   string `json:"addr"`
-	PubKey string `json:"pubkey_hex"` // hex-encoded ed25519 pub key
+	PubKey string `json:"pubkey_hex"`
 }
 
 type ClientEntryForKeys struct {
@@ -102,25 +101,21 @@ type LogKey struct {
 	ViewNumber int32
 }
 
-// Node holds replica state. It will be wrapped by the gRPC server type.
 type Node struct {
 	ID             int32
 	Address        string
 	ViewNumber     int32
 	SequenceNumber int32
 
-	// crypto
 	PrivKey          ed25519.PrivateKey
 	PubKey           ed25519.PublicKey
 	PubKeysOfNodes   map[int32]ed25519.PublicKey
 	PubKeysOfClients map[string]ed25519.PublicKey
 
-	// network
 	Peers          map[int32]string // nodeID -> address (all known peers)
 	AlivePeers     []*int32
 	MaliciousPeers []*int32
 
-	// protocol state
 	LogEntries map[int32]*LogEntry
 	Balances   map[string]int32
 
@@ -238,7 +233,7 @@ func (s *Node) ResetForNewSetAndUpdateNodeStatus(req *pb.FlushAndUpdateStatusReq
 			clientID := string(r)
 			err := database.UpdateClientBalance(nodeID, clientID, 10)
 			if err != nil {
-				log.Printf("[Node %d] ⚠️ Failed to reset Redis balance for node=%d client=%s: %v",
+				log.Printf("[Node %d] Failed to reset Redis balance for node=%d client=%s: %v",
 					s.ID, nodeID, clientID, err)
 			}
 		}
@@ -260,7 +255,6 @@ func (n *Node) AddMessageLog(messageType string, direction string, seqNum, fromI
 	n.AllMessagesForPrintingLog = append(n.AllMessagesForPrintingLog, entry)
 }
 
-// Load the node's private key (hex-encoded 64-byte ed25519)
 func (s *Node) LoadPrivateKey(privHexPath string) error {
 	b, err := os.ReadFile(privHexPath)
 	if err != nil {
@@ -281,7 +275,6 @@ func (s *Node) LoadPrivateKey(privHexPath string) error {
 	return nil
 }
 
-// Load manifest with replica public keys (and addresses). Returns the address book.
 func (s *Node) LoadManifest(path string) (map[int32]string, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {

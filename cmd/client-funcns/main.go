@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -41,9 +40,6 @@ func loadManifest(path string) (map[int32]string, error) {
 	}
 	addrs := make(map[int32]string, len(m.Replicas))
 	for _, r := range m.Replicas {
-		if _, err := hex.DecodeString(strings.TrimSpace(r.PubKey)); err != nil {
-			// ignore pubkey decode errors for ops tool; address is what we need
-		}
 		addrs[r.ID] = r.Addr
 	}
 	return addrs, nil
@@ -227,7 +223,6 @@ func printView(addr string, id int32) {
 	for _, view := range viewNumbers {
 		msg := resp.NewViewNumberToNewViewMessageMap[view]
 		fmt.Printf("\n🔹 NewViewMessage(view=%d)\n", msg.NewViewNumber)
-		//fmt.Printf("   ├── Signature: %x\n", msg.Signature)
 		fmt.Printf("   ├── #Number of PrePrepares: %d\n", len(msg.PrePrepares))
 		fmt.Printf("   ├── #Number of ViewChanges Recievied: %d\n", len(msg.ViewChanges))
 

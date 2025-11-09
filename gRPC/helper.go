@@ -20,7 +20,7 @@ import (
 const (
 	F                      = 2
 	clientCallbackAddr     = "localhost:7000"
-	checkPointingInterval  = 3
+	checkPointingInterval  = 100
 	isCheckPointingEnabled = false
 )
 
@@ -67,7 +67,7 @@ func (s *NodeServer) executeInOrder() {
 		}
 
 		if ok && entry != nil && entry.Digest == node.NullDigest {
-			log.Printf("executeInOrder: sequence number is %d and updated to executed", nextSeq)
+			//log.Printf("executeInOrder: sequence number is %d and updated to executed", nextSeq)
 			entry.ViewNumber = s.Node.ViewNumber
 			entry.Status = node.StatusExecuted
 			n.LastExecutedSequenceNumber = nextSeq
@@ -155,19 +155,14 @@ func (s *NodeServer) executeInOrder() {
 		}
 
 		bytes := crypto.GenerateBytesForReplySigning(reply)
-		//isSignAttack, _ := s.HasAttack(string(SignAttack))
-		//if isSignAttack {
-		//	reply.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
-		//} else {
 		reply.Signature = n.Sign(bytes)
-		//}
 
 		n.AlreadyExecutedTransactions[entry.Digest] = reply
-		log.Printf("Updated the executedTransaction for transaction: %v, digest is: %s", entry.Transaction, entry.Digest)
+		//log.Printf("Updated the executedTransaction for transaction: %v, digest is: %s", entry.Transaction, entry.Digest)
 		n.Unlock()
 
-		log.Printf("[Node %d] ✅ EXECUTED t=%d: %s → %s (amt=%d) result=%t",
-			n.ID, tx.Time, tx.FromClientId, tx.ToClientId, tx.Amount, result)
+		//log.Printf("[Node %d] ✅ EXECUTED t=%d: %s → %s (amt=%d) result=%t",
+		//	n.ID, tx.Time, tx.FromClientId, tx.ToClientId, tx.Amount, result)
 		s.UpdateNodeTimer()
 
 		n.AddMessageLog("EXECUTED", "sent", entry.SequenceNumber, n.ID, n.ID, n.ViewNumber)
@@ -192,21 +187,21 @@ func (s *NodeServer) UpdateNodeTimer() {
 		}
 		_, ok := s.Node.AlreadyExecutedTransactions[entry.Digest]
 		if entry.Status != node.StatusExecuted && !ok {
-			if entry.Transaction != nil {
-				log.Printf("UpdateNodeTimer: Transaction is: %v; Digest is: %s", entry.Transaction, entry.Digest)
-			} else {
-				log.Printf("UpdateNodeTimer: Transaction is: nil and marking isTransactionProcessing")
-			}
+			//if entry.Transaction != nil {
+			//	log.Printf("UpdateNodeTimer: Transaction is: %v; Digest is: %s", entry.Transaction, entry.Digest)
+			//} else {
+			//	log.Printf("UpdateNodeTimer: Transaction is: nil and marking isTransactionProcessing")
+			//}
 			isTransactionProcessing = true
 			break
 		}
 	}
 	if !isTransactionProcessing {
-		log.Printf("Stop node timer in view-%d as all transactions are executed", s.Node.ViewNumber)
+		//log.Printf("Stop node timer in view-%d as all transactions are executed", s.Node.ViewNumber)
 		s.Node.Unlock()
 		s.Node.StopNodeTimer()
 	} else {
-		log.Printf("Resetting node timer in UpdateNodeTimer")
+		//log.Printf("Resetting node timer in UpdateNodeTimer")
 		s.Node.Unlock()
 		s.Node.ResetNodeTimer()
 	}
@@ -320,7 +315,7 @@ func (s *NodeServer) sendCheckpointMessage(seq int32, digest string) {
 		go func(pid int32, addr string) {
 			conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
-				log.Printf("[Node %d] ❌ Failed to dial peer n%d: %v", n.ID, pid, err)
+				log.Printf("[Node %d]  Failed to dial peer n%d: %v", n.ID, pid, err)
 				return
 			}
 			defer conn.Close()
@@ -332,7 +327,7 @@ func (s *NodeServer) sendCheckpointMessage(seq int32, digest string) {
 			n.AddMessageLog("CHECKPOINT", "sent", msg.GetSequenceNumber(), n.ID, pid, n.ViewNumber)
 			_, err = node.SendCheckPointMessage(ctx, msg)
 			if err != nil {
-				log.Printf("[Node %d] ❌ SendCheckpointMessage to n%d failed: %v", n.ID, pid, err)
+				log.Printf("[Node %d]  SendCheckpointMessage to n%d failed: %v", n.ID, pid, err)
 			}
 		}(peerID, addr)
 	}
@@ -346,4 +341,14 @@ func toProtoCheckpointProofs(src map[int32][]*pb.CheckpointMessageRequest) map[i
 		}
 	}
 	return dst
+}
+
+func (s *NodeServer) addToLogRecordsForSendNewView(seq int32, msg *pb.NewViewMessage, view int32) {
+	n := s.Node
+	n.AddMessageLog("PREPREPARE", "received", seq, msg.SourceId, s.Node.ID, view)
+	n.AddMessageLog("PREPREPARED", "sent", seq, s.Node.ID, msg.SourceId, view)
+	n.AddMessageLog("PREPARE", "received", seq, msg.SourceId, s.Node.ID, view)
+	n.AddMessageLog("PREPARED", "sent", seq, s.Node.ID, msg.SourceId, view)
+	n.AddMessageLog("COMMIT", "received", seq, msg.SourceId, s.Node.ID, view)
+	n.AddMessageLog("COMMITTED", "sent", seq, s.Node.ID, msg.SourceId, view)
 }

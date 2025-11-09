@@ -22,39 +22,33 @@ message PrePrepareMessageRequest {
   bytes  signature = 6;
 }
 
-// can think of better response
 message PrePrepareMessageResponse {
   int32  view_number = 1;
   int32  sequence_number = 2;
   string digest = 3;
   int32  replica_id = 4;
   bytes  signature = 5;
-  // shld always be PRE-PREPARED
   string status = 6;
 }
 
 message PrepareMessageRequest {
   repeated PrePrepareMessageResponse pre_prepared_message_response = 1;
-  // are below fields needed?
   int32  replica_id = 2;
   bytes  signature = 3;
   int32 sequence_number = 4;
 }
 
-// can think of better response
 message PrepareMessageResponse {
   int32  view_number = 1;
   int32  sequence_number = 2;
   string digest = 3;
   int32  replica_id = 4;
   bytes  signature = 5;
-  // shld always be PREPARED
   string status = 6;
 }
 
 message CommitMessageRequest {
   repeated PrepareMessageResponse prepared_message_response = 1;
-  // are below fields needed?
   int32  replica_id = 2;
   bytes  signature = 3;
   int32 sequence_number = 4;
@@ -66,7 +60,6 @@ message CommitMessageResponse {
   string digest = 3;
   int32  replica_id = 4;
   bytes  signature = 5;
-  // shld be COMMITTED/EXECUTED
   string status = 6;
 }
 

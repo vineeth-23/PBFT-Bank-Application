@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 
 	pb "pbft-bank-application/pbft-bank-application/proto"
@@ -24,14 +23,13 @@ func (s *CallbackServer) Start(listenAddr string) error {
 		return fmt.Errorf("listen %s: %w", listenAddr, err)
 	}
 	gs := grpc.NewServer()
-	pb.RegisterClientCallbackServer(gs, s) // adjust if your service name differs
+	pb.RegisterClientCallbackServer(gs, s)
 	return gs.Serve(lis)
 }
 
-// Replica callback -> record and ACK
 func (s *CallbackServer) ReplyToClientFromNode(ctx context.Context, r *pb.ReplyToClientRequest) (*pb.Ack, error) {
-	log.Printf("[CallbackServer] ✅ Received reply from replica=%d | view=%d | time=%d | result=%t",
-		r.ReplicaId, r.View, r.Time, r.Result)
+	//log.Printf("[CallbackServer] Received reply from replica=%d | view=%d | time=%d | result=%t",
+	//	r.ReplicaId, r.View, r.Time, r.Result)
 	s.Hub.ProcessNodeReply(r)
 	return &pb.Ack{Success: true, Message: "ok"}, nil
 }
