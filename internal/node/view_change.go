@@ -312,7 +312,6 @@ func sendRequesttToLeader(ctx context.Context, req *pb.ClientRequestMessage) err
 }
 
 func (s *Node) addMessageLogsInLeaderForNewView(validNodeIds []int32, PrePrepares []*pb.PrePrepareMessageRequest, newView int32) {
-	log.Printf("s.Nvl = %t", s.Nvl)
 	if !s.Nvl {
 		return
 	}

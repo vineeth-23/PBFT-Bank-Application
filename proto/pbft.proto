@@ -54,6 +54,13 @@ message CommitMessageRequest {
   int32 sequence_number = 4;
 }
 
+message CommitMessageRequestForOPR {
+  repeated PrePrepareMessageResponse preprepared_message_response = 1;
+  int32  replica_id = 2;
+  bytes  signature = 3;
+  int32 sequence_number = 4;
+}
+
 message CommitMessageResponse {
   int32  view_number = 1;
   int32  sequence_number = 2;
@@ -224,6 +231,7 @@ service PBFTReplica {
   rpc SendPrePrepare  (PrePrepareMessageRequest)  returns (PrePrepareMessageResponse);
   rpc SendPrepare     (PrepareMessageRequest)     returns (PrepareMessageResponse);
   rpc SendCommit      (CommitMessageRequest)      returns (CommitMessageResponse);
+  rpc SendCommitForOPC (CommitMessageRequestForOPR) returns (CommitMessageResponse);
   rpc ReadClientBalance (ReadClientBalanceRequest) returns (ReadClientBalanceResponse);
   rpc FlushPreviousDataAndUpdatePeersStatus   (FlushAndUpdateStatusRequest) returns (google.protobuf.Empty);
 

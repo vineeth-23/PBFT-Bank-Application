@@ -13,7 +13,7 @@ const (
 	N = 3*F + 1 // 7
 )
 
-const quorum = F + 1
+const quorum = 2*F + 1
 
 const clientTimeout = 20000 * time.Millisecond
 

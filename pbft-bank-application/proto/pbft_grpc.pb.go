@@ -24,6 +24,7 @@ const (
 	PBFTReplica_SendPrePrepare_FullMethodName                        = "/pb.PBFTReplica/SendPrePrepare"
 	PBFTReplica_SendPrepare_FullMethodName                           = "/pb.PBFTReplica/SendPrepare"
 	PBFTReplica_SendCommit_FullMethodName                            = "/pb.PBFTReplica/SendCommit"
+	PBFTReplica_SendCommitForOPC_FullMethodName                      = "/pb.PBFTReplica/SendCommitForOPC"
 	PBFTReplica_ReadClientBalance_FullMethodName                     = "/pb.PBFTReplica/ReadClientBalance"
 	PBFTReplica_FlushPreviousDataAndUpdatePeersStatus_FullMethodName = "/pb.PBFTReplica/FlushPreviousDataAndUpdatePeersStatus"
 	PBFTReplica_SendViewChange_FullMethodName                        = "/pb.PBFTReplica/SendViewChange"
@@ -44,6 +45,7 @@ type PBFTReplicaClient interface {
 	SendPrePrepare(ctx context.Context, in *PrePrepareMessageRequest, opts ...grpc.CallOption) (*PrePrepareMessageResponse, error)
 	SendPrepare(ctx context.Context, in *PrepareMessageRequest, opts ...grpc.CallOption) (*PrepareMessageResponse, error)
 	SendCommit(ctx context.Context, in *CommitMessageRequest, opts ...grpc.CallOption) (*CommitMessageResponse, error)
+	SendCommitForOPC(ctx context.Context, in *CommitMessageRequestForOPR, opts ...grpc.CallOption) (*CommitMessageResponse, error)
 	ReadClientBalance(ctx context.Context, in *ReadClientBalanceRequest, opts ...grpc.CallOption) (*ReadClientBalanceResponse, error)
 	FlushPreviousDataAndUpdatePeersStatus(ctx context.Context, in *FlushAndUpdateStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// View Change/New View RPCs:
@@ -101,6 +103,16 @@ func (c *pBFTReplicaClient) SendCommit(ctx context.Context, in *CommitMessageReq
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CommitMessageResponse)
 	err := c.cc.Invoke(ctx, PBFTReplica_SendCommit_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *pBFTReplicaClient) SendCommitForOPC(ctx context.Context, in *CommitMessageRequestForOPR, opts ...grpc.CallOption) (*CommitMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommitMessageResponse)
+	err := c.cc.Invoke(ctx, PBFTReplica_SendCommitForOPC_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +227,7 @@ type PBFTReplicaServer interface {
 	SendPrePrepare(context.Context, *PrePrepareMessageRequest) (*PrePrepareMessageResponse, error)
 	SendPrepare(context.Context, *PrepareMessageRequest) (*PrepareMessageResponse, error)
 	SendCommit(context.Context, *CommitMessageRequest) (*CommitMessageResponse, error)
+	SendCommitForOPC(context.Context, *CommitMessageRequestForOPR) (*CommitMessageResponse, error)
 	ReadClientBalance(context.Context, *ReadClientBalanceRequest) (*ReadClientBalanceResponse, error)
 	FlushPreviousDataAndUpdatePeersStatus(context.Context, *FlushAndUpdateStatusRequest) (*emptypb.Empty, error)
 	// View Change/New View RPCs:
@@ -249,6 +262,9 @@ func (UnimplementedPBFTReplicaServer) SendPrepare(context.Context, *PrepareMessa
 }
 func (UnimplementedPBFTReplicaServer) SendCommit(context.Context, *CommitMessageRequest) (*CommitMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendCommit not implemented")
+}
+func (UnimplementedPBFTReplicaServer) SendCommitForOPC(context.Context, *CommitMessageRequestForOPR) (*CommitMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendCommitForOPC not implemented")
 }
 func (UnimplementedPBFTReplicaServer) ReadClientBalance(context.Context, *ReadClientBalanceRequest) (*ReadClientBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadClientBalance not implemented")
@@ -369,6 +385,24 @@ func _PBFTReplica_SendCommit_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PBFTReplicaServer).SendCommit(ctx, req.(*CommitMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PBFTReplica_SendCommitForOPC_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitMessageRequestForOPR)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PBFTReplicaServer).SendCommitForOPC(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PBFTReplica_SendCommitForOPC_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PBFTReplicaServer).SendCommitForOPC(ctx, req.(*CommitMessageRequestForOPR))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -575,6 +609,10 @@ var PBFTReplica_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendCommit",
 			Handler:    _PBFTReplica_SendCommit_Handler,
+		},
+		{
+			MethodName: "SendCommitForOPC",
+			Handler:    _PBFTReplica_SendCommitForOPC_Handler,
 		},
 		{
 			MethodName: "ReadClientBalance",

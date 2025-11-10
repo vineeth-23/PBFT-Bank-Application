@@ -141,6 +141,7 @@ type Node struct {
 	// evi avsrm led
 	Nvl bool
 	Cp  bool
+	Opr bool
 
 	mu sync.Mutex
 }
@@ -171,6 +172,7 @@ func NewNode(id int32, address string, peers map[int32]string) *Node {
 		AddedLogsForNewViewNumber:      make(map[int32]bool),
 		Nvl:                            false,
 		Cp:                             false,
+		Opr:                            false,
 	}
 	n.Peers = peers
 

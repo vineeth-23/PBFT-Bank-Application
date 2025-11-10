@@ -319,6 +319,73 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 	//log.Printf("[Leader %d] PRE-PREPARE collected %d/%d follower acks (plus local)",
 	//	s.Node.ID, len(ppResponses)-1, len(targetPeers))
 
+	if s.Node.Opr {
+		n.Lock()
+		validPrePrepareResponsesCount := 0
+		for _, resp := range ppResponses {
+			if resp.GetStatus() == string(node.StatusPrePrepared) && resp.GetSequenceNumber() == majSeq {
+				validPrePrepareResponsesCount++
+			}
+		}
+		n.Unlock()
+
+		// (3 * F + 1)
+		if validPrePrepareResponsesCount >= 7 {
+			n.Lock()
+			commitReq := &pb.CommitMessageRequestForOPR{
+				PrepreparedMessageResponse: ppResponses,
+				ReplicaId:                  s.Node.ID,
+				SequenceNumber:             majSeq,
+			}
+			bytes = GenerateBytesForSign(majSeq, digest)
+
+			if isSignAttack, _ := s.HasAttack(string(common.SignAttack)); isSignAttack {
+				//log.Printf("node %d: Signing invalid sign for sending Pre-PrePare message", s.Node.ID)
+				commitReq.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
+			} else {
+				commitReq.Signature = s.Node.Sign(bytes)
+			}
+
+			n.Unlock()
+
+			s.SendCommitForOPC(context.Background(), commitReq)
+
+			{
+				var wg sync.WaitGroup
+				for pid, addr := range targetPeers {
+					if isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack)); isDarkAttack &&
+						IsNodePresentInAttackNodes(darkAttackNodes, pid) {
+						//log.Printf("[Node %d] in-dark: Not sending commit to n%d",
+						//	s.Node.ID, pid)
+						continue
+					}
+
+					wg.Add(1)
+					go func(peerID int32, peerAddr string) {
+						defer wg.Done()
+						conn, err := grpc.Dial(peerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+						if err != nil {
+							//log.Printf("[Leader %d] SendCommit dial %s failed: %v", s.Node.ID, peerAddr, err)
+							return
+						}
+						defer conn.Close()
+
+						replica := pb.NewPBFTReplicaClient(conn)
+						cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+						defer cancel()
+						n.AddMessageLog("COMMIT", "send", commitReq.GetSequenceNumber(), n.ID, peerID, n.ViewNumber)
+						if _, err := replica.SendCommitForOPC(cctx, commitReq); err != nil {
+							//log.Printf("[Leader %d] SendCommit->n%d error: %v", s.Node.ID, peerID, err)
+							return
+						}
+					}(pid, addr)
+				}
+				wg.Wait()
+			}
+			return nil, nil
+		}
+	}
+
 	n.Lock()
 	prepReq := &pb.PrepareMessageRequest{
 		PrePreparedMessageResponse: ppResponses,
@@ -455,7 +522,7 @@ func (s *NodeServer) SendRequestToLeader(ctx context.Context, req *pb.ClientRequ
 		}
 		wg.Wait()
 	}
-	//log.Printf("[Leader %d] ✅ Commit phase dispatched for t=%d (v=%d, n=%d, digest=%s). Execution will be reported via client callback.",
+	//log.Printf("[Leader %d] Commit phase dispatched for t=%d (v=%d, n=%d, digest=%s). Execution will be reported via client callback.",
 	//	s.Node.ID, tx.GetTime(), view, majSeq, digest[:8])
 
 	return nil, nil
@@ -899,6 +966,174 @@ func (s *NodeServer) SendCommit(ctx context.Context, req *pb.CommitMessageReques
 
 	n.AddMessageLog("COMMITTED", "sent", resp.SequenceNumber, n.ID, req.ReplicaId, resp.ViewNumber)
 
+	n.Unlock()
+	s.executeInOrder()
+
+	isDarkAttack, darkAttackNodes := s.HasAttack(string(common.DarkAttack))
+	if isDarkAttack && IsNodePresentInAttackNodes(darkAttackNodes, req.ReplicaId) {
+		//log.Printf("[Node %d] in-dark: dropping Commit reply to n%d (v=%d,n=%d,d=%s)",
+		//	s.Node.ID, req.ReplicaId, resp.ViewNumber, resp.SequenceNumber, resp.Digest[:8])
+		return nil, status.Error(codes.Unavailable, "in-dark: simulated drop")
+	}
+
+	return resp, nil
+}
+
+func (s *NodeServer) SendCommitForOPC(ctx context.Context, req *pb.CommitMessageRequestForOPR) (*pb.CommitMessageResponse, error) {
+	n := s.Node
+
+	if !n.IsAlive {
+		//log.Printf("Node is not alive")
+		return nil, status.Error(codes.Aborted, "Node is not alive")
+	}
+
+	isCrashAttack, _ := s.HasAttack(string(common.CrashAttack))
+	if isCrashAttack {
+		//log.Printf("[Node %d]  Simulating crash attack — No response sent for SendCommit", s.Node.ID)
+		return nil, fmt.Errorf("node %d is simulating a crash attack and cannot respond to SendCommit request", s.Node.ID)
+	}
+
+	//log.Printf("Calling ResetNodeTimer from SendCommit func")
+	//n.ResetNodeTimer()
+
+	n.Lock()
+
+	if len(req.GetPrepreparedMessageResponse()) == 0 {
+		n.Unlock()
+		return &pb.CommitMessageResponse{
+			Status: "REJECTED_EMPTY_PROOFS",
+		}, nil
+	}
+
+	for _, logEntry := range s.Node.LogEntries {
+		if logEntry.SequenceNumber == req.SequenceNumber {
+			continue
+		}
+		existingDigest := logEntry.Digest
+		currentLogEntry := s.Node.LogEntries[req.SequenceNumber]
+		if currentLogEntry == nil {
+			continue
+		}
+		currentDigest := currentLogEntry.Digest
+
+		if existingDigest == currentDigest && isValidStatusForCommitted(logEntry.Status) {
+			n.Unlock()
+			//log.Printf("Already message is in valid state so no committing again: Duplicacy found")
+			return nil, nil
+		}
+	}
+
+	entry, ok := n.LogEntries[req.GetSequenceNumber()]
+	seq := req.GetSequenceNumber()
+	if !ok {
+		n.Unlock()
+		return &pb.CommitMessageResponse{
+			ViewNumber:     0,
+			SequenceNumber: seq,
+			Digest:         "",
+			ReplicaId:      n.ID,
+			Status:         "REJECTED_NO_ENTRY",
+		}, nil
+	}
+
+	currentViewNumber := entry.ViewNumber
+	currentDigest := entry.Digest
+	currentSequenceNumber := entry.SequenceNumber
+	n.AddMessageLog("COMMIT", "received", req.GetSequenceNumber(), req.ReplicaId, n.ID, currentViewNumber)
+
+	if entry.Status != node.StatusPrePrepared {
+		n.Unlock()
+		return &pb.CommitMessageResponse{
+			ViewNumber:     currentViewNumber,
+			SequenceNumber: currentSequenceNumber,
+			Digest:         currentDigest,
+			ReplicaId:      n.ID,
+			Status:         "REJECTED_NOT_PREPREPARED",
+		}, nil
+	}
+
+	seen := map[int32]bool{}
+	validPrepreparedCount := 0
+	proofs := make(map[int32]*node.StatusProof)
+
+	for _, pmr := range req.PrepreparedMessageResponse {
+		if !crypto.VerifyNodeSignatureBasedOnSequenceNumberAndDigest(
+			pmr.GetReplicaId(),
+			pmr.GetSequenceNumber(),
+			pmr.GetDigest(),
+			pmr.GetSignature(),
+			s.Node.PubKeysOfNodes,
+		) {
+			//log.Printf("Invalid signature in SendCommit found for node-%d", pmr.ReplicaId)
+			continue
+		}
+
+		if pmr.ViewNumber != currentViewNumber ||
+			pmr.SequenceNumber != currentSequenceNumber ||
+			pmr.Digest != currentDigest ||
+			pmr.Status != string(node.StatusPrePrepared) {
+			continue
+		}
+
+		if !seen[pmr.ReplicaId] {
+			seen[pmr.ReplicaId] = true
+			validPrepreparedCount++
+
+			proofs[pmr.ReplicaId] = &node.StatusProof{
+				NodeID:         pmr.ReplicaId,
+				Digest:         pmr.GetDigest(),
+				View:           pmr.GetViewNumber(),
+				SequenceNumber: pmr.GetSequenceNumber(),
+				Status:         node.Status(pmr.GetStatus()),
+				Signature:      append([]byte(nil), pmr.GetSignature()...),
+			}
+		}
+	}
+
+	//log.Printf("ValidPreparedCount: %d for sequence number: %d", validPreparedCount, req.GetSequenceNumber())
+	if validPrepreparedCount < (2*F + 1) {
+		n.Unlock()
+		//log.Printf("No quorum reached for COMMIT (i.e., no atleast 5 prepared acks) for viewnumber=%d", currentViewNumber)
+		return &pb.CommitMessageResponse{
+			ViewNumber:     currentViewNumber,
+			SequenceNumber: currentSequenceNumber,
+			Digest:         currentDigest,
+			ReplicaId:      n.ID,
+			Status:         string(node.StatusNotEnoughPrePrepared),
+		}, nil
+	}
+
+	entry.Status = node.StatusCommitted
+	if entry.CommittedProof == nil {
+		entry.CommittedProof = make(map[int32][]*node.StatusProof)
+	}
+
+	for _, sp := range proofs {
+		entry.CommittedProof[currentSequenceNumber] = append(entry.CommittedProof[currentSequenceNumber], sp)
+	}
+
+	resp := &pb.CommitMessageResponse{
+		ViewNumber:     currentViewNumber,
+		SequenceNumber: currentSequenceNumber,
+		Digest:         currentDigest,
+		ReplicaId:      n.ID,
+		Status:         string(node.StatusCommitted),
+	}
+
+	bytes := GenerateBytesForSign(resp.SequenceNumber, resp.Digest)
+	isSignAttack, _ := s.HasAttack(string(common.SignAttack))
+	if isSignAttack {
+		//log.Printf("Signing invalid sign for node %d in SendPrePrepare", s.Node.ID)
+		resp.Signature = crypto.SignInvalidTamper(n.PrivKey, bytes)
+	} else {
+		resp.Signature = n.Sign(bytes)
+	}
+	//log.Printf("[Node %d] Updated to COMMITTED (sequence_no=%d)",
+	//	n.ID, req.GetSequenceNumber())
+
+	n.AddMessageLog("COMMITTED", "sent", resp.SequenceNumber, n.ID, req.ReplicaId, resp.ViewNumber)
+
+	//log.Printf("Commited the transaction with seq: %d; view: %d in OPR", req.SequenceNumber, resp.ViewNumber)
 	n.Unlock()
 	s.executeInOrder()
 
