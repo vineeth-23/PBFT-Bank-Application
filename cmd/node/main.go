@@ -21,9 +21,6 @@ func main() {
 	database.InitRedisClient("localhost:6379")
 	fmt.Println("Connected to Redis at localhost:6379")
 
-	fmt.Println("NVL:", *nvl)
-	fmt.Println("CP:", *cp)
-
 	if *priv == "" {
 		*priv = filepath.Join("keys", fmt.Sprintf("node%d.priv", *id))
 	}

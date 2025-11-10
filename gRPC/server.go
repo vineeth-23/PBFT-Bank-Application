@@ -1068,8 +1068,11 @@ func (s *NodeServer) SendNewView(ctx context.Context, msg *pb.NewViewMessage) (*
 
 	n.Lock()
 	n.AllNewViewMessagesForPrinting[msg.GetNewViewNumber()] = msg
-
 	n.Unlock()
+
+	constructedOSet := s.Node.ConstructOSet(msg.NewViewNumber, msg.ViewChanges)
+	oSetFromLeader := msg.GetPrePrepares()
+	verifyOSetFromLeader(constructedOSet, oSetFromLeader)
 
 	if len(msg.PrePrepares) == 0 {
 		for _, entry := range s.Node.LogEntries {

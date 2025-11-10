@@ -27,7 +27,7 @@ func (s *Node) ResetNodeTimer() {
 	}
 
 	// +rand.Intn(600)
-	timeout := 10000 * time.Millisecond
+	timeout := 2000 * time.Millisecond
 
 	s.electionTimer = time.AfterFunc(timeout, func() {
 		newViewNumber := s.getNextValidNewViewNumber()
@@ -380,4 +380,51 @@ func (s *Node) addMessageLogsInLeaderForNewView(validNodeIds []int32, PrePrepare
 		}
 	}
 	s.AddedLogsForNewViewNumber[newView] = true
+}
+
+func (s *Node) ConstructOSet(newView int32, viewChangeMessages []*pb.ViewChangeMessage) []*pb.PrePrepareMessageRequest {
+	oSet := make([]*pb.PrePrepareMessageRequest, 0)
+	maxSeq := int32(0)
+
+	for _, msg := range viewChangeMessages {
+		//log.Printf("Recievied %d messages from Node-%d for intiating new view", len(msg.GetPreparedProofSet()), msg.NodeId)
+		for _, pset := range msg.PreparedProofSet {
+			if pset.SequenceNumber > maxSeq {
+				maxSeq = pset.SequenceNumber
+			}
+		}
+	}
+
+	//log.Printf("IntiateNewView: Max sequence number: %d", maxSeq)
+
+	for seq := int32(1); seq <= maxSeq; seq++ {
+		var selectedPset *pb.PreparedProofSet
+		var highestView int32 = -1
+
+		for _, msg := range viewChangeMessages {
+			for _, pset := range msg.PreparedProofSet {
+				if pset.SequenceNumber == seq && pset.ViewNumber > highestView {
+					highestView = pset.ViewNumber
+					selectedPset = pset
+				}
+			}
+		}
+
+		var digest string
+		if selectedPset != nil {
+			digest = selectedPset.Digest
+		} else {
+			digest = NullDigest
+		}
+
+		oSet = append(oSet, &pb.PrePrepareMessageRequest{
+			ViewNumber:     newView,
+			SequenceNumber: seq,
+			Digest:         digest,
+			ReplicaId:      s.ID,
+			Transaction:    selectedPset.GetTransaction(),
+			Signature:      s.Sign(crypto.GenerateBytesOnlyForNodeID(s.ID)),
+		})
+	}
+	return oSet
 }

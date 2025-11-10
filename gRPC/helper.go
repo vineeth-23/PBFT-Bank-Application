@@ -15,6 +15,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -363,4 +364,33 @@ func (s *NodeServer) addToLogRecordsForSendNewView(seq int32, msg *pb.NewViewMes
 	n.AddMessageLog("PREPARED", "sent", seq, s.Node.ID, msg.SourceId, view)
 	n.AddMessageLog("COMMIT", "received", seq, msg.SourceId, s.Node.ID, view)
 	n.AddMessageLog("COMMITTED", "sent", seq, s.Node.ID, msg.SourceId, view)
+}
+
+func verifyOSetFromLeader(local []*pb.PrePrepareMessageRequest, received []*pb.PrePrepareMessageRequest) bool {
+	if len(local) != len(received) {
+		return false
+	}
+
+	for i := range local {
+		l := local[i]
+		r := received[i]
+
+		if l.ViewNumber != r.ViewNumber {
+			return false
+		}
+
+		if l.SequenceNumber != r.SequenceNumber {
+			return false
+		}
+
+		if l.Digest != r.Digest {
+			return false
+		}
+
+		if !proto.Equal(l.Transaction, r.Transaction) {
+			return false
+		}
+	}
+
+	return true
 }
